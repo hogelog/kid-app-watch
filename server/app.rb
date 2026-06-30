@@ -52,6 +52,8 @@ module KidAppWatch
       end
 
       def protected_admin!
+        return if ENV.fetch("ADMIN_AUTH_MODE", "basic") == "none"
+
         user = ENV.fetch("ADMIN_USER", "admin")
         password = ENV.fetch("ADMIN_PASSWORD", "change-me")
 

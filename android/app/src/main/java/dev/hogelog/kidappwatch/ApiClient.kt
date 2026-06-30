@@ -23,7 +23,7 @@ class ApiClient(
     fun fetchConfig(settings: AppSettings): List<WatchPackage> {
         val request = Request.Builder()
             .url("${settings.serverUrl}/api/devices/${settings.deviceId}/config")
-            .header("Authorization", "Bearer ${settings.apiToken}")
+            .withAuthHeaders(settings)
             .get()
             .build()
 
@@ -51,7 +51,7 @@ class ApiClient(
 
         val request = Request.Builder()
             .url("${settings.serverUrl}/api/devices/${settings.deviceId}/app_launch_events")
-            .header("Authorization", "Bearer ${settings.apiToken}")
+            .withAuthHeaders(settings)
             .post(body)
             .build()
 
@@ -71,5 +71,17 @@ class ApiClient(
                 ),
             )
         }
+    }
+
+    private fun Request.Builder.withAuthHeaders(settings: AppSettings): Request.Builder {
+        header("Authorization", "Bearer ${settings.apiToken}")
+        if (
+            settings.cloudflareAccessClientId.isNotBlank() &&
+            settings.cloudflareAccessClientSecret.isNotBlank()
+        ) {
+            header("CF-Access-Client-Id", settings.cloudflareAccessClientId)
+            header("CF-Access-Client-Secret", settings.cloudflareAccessClientSecret)
+        }
+        return this
     }
 }

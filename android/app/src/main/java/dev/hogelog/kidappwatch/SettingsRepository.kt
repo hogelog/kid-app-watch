@@ -18,6 +18,8 @@ data class AppSettings(
     val serverUrl: String = "",
     val deviceId: String = "",
     val apiToken: String = "",
+    val cloudflareAccessClientId: String = "",
+    val cloudflareAccessClientSecret: String = "",
     val lastEventSummary: String = "",
     val lastScanAtMillis: Long = 0L,
     val monitorEnabled: Boolean = true,
@@ -28,6 +30,8 @@ class SettingsRepository(private val context: Context) {
         val serverUrl = stringPreferencesKey("server_url")
         val deviceId = stringPreferencesKey("device_id")
         val apiToken = stringPreferencesKey("api_token")
+        val cloudflareAccessClientId = stringPreferencesKey("cloudflare_access_client_id")
+        val cloudflareAccessClientSecret = stringPreferencesKey("cloudflare_access_client_secret")
         val lastEventSummary = stringPreferencesKey("last_event_summary")
         val lastScanAtMillis = longPreferencesKey("last_scan_at_millis")
         val monitorEnabled = booleanPreferencesKey("monitor_enabled")
@@ -42,17 +46,27 @@ class SettingsRepository(private val context: Context) {
                 serverUrl = preferences[Keys.serverUrl].orEmpty(),
                 deviceId = preferences[Keys.deviceId].orEmpty(),
                 apiToken = preferences[Keys.apiToken].orEmpty(),
+                cloudflareAccessClientId = preferences[Keys.cloudflareAccessClientId].orEmpty(),
+                cloudflareAccessClientSecret = preferences[Keys.cloudflareAccessClientSecret].orEmpty(),
                 lastEventSummary = preferences[Keys.lastEventSummary].orEmpty(),
                 lastScanAtMillis = preferences[Keys.lastScanAtMillis] ?: 0L,
                 monitorEnabled = preferences[Keys.monitorEnabled] ?: true,
             )
         }
 
-    suspend fun saveConnection(serverUrl: String, deviceId: String, apiToken: String) {
+    suspend fun saveConnection(
+        serverUrl: String,
+        deviceId: String,
+        apiToken: String,
+        cloudflareAccessClientId: String,
+        cloudflareAccessClientSecret: String,
+    ) {
         context.dataStore.edit { preferences ->
             preferences[Keys.serverUrl] = serverUrl.trim().trimEnd('/')
             preferences[Keys.deviceId] = deviceId.trim()
             preferences[Keys.apiToken] = apiToken.trim()
+            preferences[Keys.cloudflareAccessClientId] = cloudflareAccessClientId.trim()
+            preferences[Keys.cloudflareAccessClientSecret] = cloudflareAccessClientSecret.trim()
         }
     }
 

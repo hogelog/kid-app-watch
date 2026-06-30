@@ -54,6 +54,8 @@ private fun SettingsScreen() {
     var serverUrl by remember { mutableStateOf("") }
     var deviceId by remember { mutableStateOf("") }
     var apiToken by remember { mutableStateOf("") }
+    var cloudflareAccessClientId by remember { mutableStateOf("") }
+    var cloudflareAccessClientSecret by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
     LaunchedEffect(repository) {
@@ -62,6 +64,8 @@ private fun SettingsScreen() {
             serverUrl = current.serverUrl
             deviceId = current.deviceId
             apiToken = current.apiToken
+            cloudflareAccessClientId = current.cloudflareAccessClientId
+            cloudflareAccessClientSecret = current.cloudflareAccessClientSecret
         }
     }
 
@@ -118,11 +122,33 @@ private fun SettingsScreen() {
             visualTransformation = PasswordVisualTransformation(),
             label = { Text("API token") },
         )
+        OutlinedTextField(
+            value = cloudflareAccessClientId,
+            onValueChange = { cloudflareAccessClientId = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            label = { Text("Cloudflare Access client ID") },
+        )
+        OutlinedTextField(
+            value = cloudflareAccessClientSecret,
+            onValueChange = { cloudflareAccessClientSecret = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            label = { Text("Cloudflare Access client secret") },
+        )
 
         Button(
             onClick = {
                 scope.launch {
-                    repository.saveConnection(serverUrl, deviceId, apiToken)
+                    repository.saveConnection(
+                        serverUrl = serverUrl,
+                        deviceId = deviceId,
+                        apiToken = apiToken,
+                        cloudflareAccessClientId = cloudflareAccessClientId,
+                        cloudflareAccessClientSecret = cloudflareAccessClientSecret,
+                    )
                     LaunchMonitorScheduler.enqueue(context)
                 }
             },
