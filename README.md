@@ -1,113 +1,68 @@
 # Kid App Watch
 
-Kid App Watch is an MVP for detecting selected app launches on a child Android device and sending those events to a small self-hosted web server.
+Detect selected Android app launches on a child device, store events in SQLite, and optionally notify a parent through ntfy.
 
-The parent side uses only the web admin UI and an ntfy subscription. There is no parent Android app, no Firebase dependency, and no server-specific secrets committed to the repository.
+The server is intended to run behind Cloudflare Access. The parent uses the web admin UI and ntfy; there is no parent Android app.
 
-## Architecture
+## Components
 
-- Child device: native Android app written in Kotlin and Jetpack Compose
-- Server: Ruby, Sinatra, SQLite, and Puma
-- Notification: ntfy topic URL configured per device
-- Parent side: Cloudflare Access protected web admin UI and ntfy app
+- `server/`: Sinatra, SQLite, ERB admin UI
+- `android/`: Kotlin, Jetpack Compose, UsageStatsManager, WorkManager
 
-## Repository Layout
-
-- `server/`: Sinatra API, admin UI, SQLite schema
-- `android/`: Android app project
-
-## Server Setup
-
-Requirements:
-
-- Ruby 3.1 or newer
-- Bundler
-- SQLite development library
-
-Install dependencies:
+## Server
 
 ```sh
 cd server
 bundle install
+ADMIN_AUTH_MODE=none bundle exec rackup -o 127.0.0.1 -p 9292
 ```
 
-Start the server:
+Use `ADMIN_AUTH_MODE=none` when Cloudflare Access protects `/admin*`. For local-only testing without Access, omit it and set `ADMIN_USER` / `ADMIN_PASSWORD`.
 
-```sh
-ADMIN_USER=admin ADMIN_PASSWORD=replace-this bundle exec rackup -o 0.0.0.0 -p 9292
-```
+Useful environment variables:
 
-Open the admin UI:
-
-```text
-http://localhost:9292/admin
-```
-
-The SQLite database is created automatically at `server/data/kid_app_watch.sqlite3`. Set `DATABASE_PATH` to use a different path.
-
-## Server Configuration
-
-Environment variables:
-
-- `ADMIN_AUTH_MODE`: set `none` when `/admin` is already protected by Cloudflare Access; defaults to `basic`
-- `ADMIN_USER`: Basic auth user for `/admin`
-- `ADMIN_PASSWORD`: Basic auth password for `/admin`
-- `DATABASE_PATH`: SQLite database path
-
-Do not commit production values for these settings.
+- `DATABASE_PATH`: SQLite path; defaults to `server/data/kid_app_watch.sqlite3`
+- `ADMIN_AUTH_MODE`: `basic` or `none`
+- `ADMIN_USER`, `ADMIN_PASSWORD`: Basic auth credentials when `ADMIN_AUTH_MODE=basic`
 
 ## Cloudflare Access
 
-The intended production deployment is to put the Sinatra server behind Cloudflare Access.
+Recommended policies:
 
-Recommended Access policies:
+- `/admin*`: interactive parent login
+- `/api/*`: service token for child devices
 
-- Protect `/admin*` with an interactive parent login policy.
-- Protect `/api/*` with a service token policy for child Android devices.
-- Keep the app-level `Authorization: Bearer <device token>` check enabled even behind Access.
-
-The Android app can send Cloudflare Access service token headers:
+The Android app sends these service token headers when configured:
 
 - `CF-Access-Client-Id`
 - `CF-Access-Client-Secret`
 
-Set these values on the child device screen together with the server URL, device ID, and API token. Leave them empty only for local development or for a server path that is not protected by Cloudflare Access.
+The app-level device token is still required:
 
-When Cloudflare Access is the admin gate, start the server with local Basic auth disabled:
-
-```sh
-ADMIN_AUTH_MODE=none bundle exec rackup -o 127.0.0.1 -p 9292
+```http
+Authorization: Bearer <device-token>
 ```
 
-## Admin Flow
+## Setup Flow
 
 1. Open `/admin`.
-2. Add a device with a stable device ID, display name, and API token. Leave token empty to generate one.
-3. Open the device page.
-4. Set an ntfy topic URL, for example an HTTPS topic endpoint.
-5. Add watch packages such as `com.google.android.youtube`.
-6. Configure the child Android app with server URL, device ID, API token, and Cloudflare Access service token values.
+2. Create a device and copy its API token.
+3. Add watch packages for that device.
+4. Set the device ntfy topic URL if notifications are needed.
+5. Install the Android app on the child device.
+6. Enter server URL, device ID, API token, and Cloudflare Access service token values.
+7. Grant Android usage access.
 
 ## API
 
-Fetch device config:
-
 ```http
 GET /api/devices/:id/config
-Authorization: Bearer <token>
-CF-Access-Client-Id: <service-token-client-id>
-CF-Access-Client-Secret: <service-token-client-secret>
+POST /api/devices/:id/app_launch_events
 ```
 
-Create app launch event:
+Event body:
 
-```http
-POST /api/devices/:id/app_launch_events
-Authorization: Bearer <token>
-CF-Access-Client-Id: <service-token-client-id>
-CF-Access-Client-Secret: <service-token-client-secret>
-Content-Type: application/json
-
+```json
 {
   "package_name": "com.google.android.youtube",
   "app_label": "YouTube",
@@ -116,69 +71,10 @@ Content-Type: application/json
 }
 ```
 
-Events are always stored. ntfy notification is skipped when the same `device_id` and `package_name` already notified within the package cooldown window.
+All events are stored. ntfy notifications are suppressed per device and package within the configured cooldown.
 
-## Android Setup
+## Android Notes
 
-Requirements:
+WorkManager checks usage events periodically. Android enforces a minimum periodic interval of 15 minutes, so this MVP is not real-time. A foreground service can be added later if tighter detection is needed.
 
-- Android Studio with a recent Android Gradle Plugin
-- Android SDK 35
-- Kotlin support
-
-Open `android/` in Android Studio and run the `app` configuration on the child device.
-
-The MVP app stores these settings with DataStore:
-
-- Server URL
-- Device ID
-- API token
-- Cloudflare Access service token client ID
-- Cloudflare Access service token client secret
-- Last sent event summary
-
-Usage access is required. In the app, tap `Open usage access`, find Kid App Watch, and allow usage access.
-
-## Android Behavior
-
-- WorkManager runs `LaunchMonitorWorker` periodically.
-- The worker fetches watch packages from the server.
-- It reads foreground app resume events through `UsageStatsManager`.
-- It posts matching package launch events to the server.
-- It advances a local scan cursor and only sends one event per watched package per scan window.
-
-WorkManager's minimum periodic interval is 15 minutes. A foreground service can be added later if near real-time detection is required.
-
-## Manual Verification
-
-Create a device in the admin UI, then verify the API with curl:
-
-```sh
-curl -s \
-  -H "Authorization: Bearer <token>" \
-  -H "CF-Access-Client-Id: <service-token-client-id>" \
-  -H "CF-Access-Client-Secret: <service-token-client-secret>" \
-  http://localhost:9292/api/devices/<device-id>/config
-```
-
-Post a sample launch event:
-
-```sh
-curl -s -X POST \
-  -H "Authorization: Bearer <token>" \
-  -H "CF-Access-Client-Id: <service-token-client-id>" \
-  -H "CF-Access-Client-Secret: <service-token-client-secret>" \
-  -H "Content-Type: application/json" \
-  -d '{"package_name":"com.google.android.youtube","app_label":"YouTube","detected_at":"2026-06-30T21:30:00+09:00","source":"usage_stats"}' \
-  http://localhost:9292/api/devices/<device-id>/app_launch_events
-```
-
-Reload the device admin page and confirm the event appears in recent events.
-
-## Production Notes
-
-- Put the server behind Cloudflare Access and HTTPS before using it outside a private network.
-- Use strong per-device API tokens.
-- Use Cloudflare Access policies for both parent login and child API service tokens.
-- Keep `server/data/` out of git.
-- Treat package launch history as sensitive data.
+Open `android/` in Android Studio and run the `app` configuration.
