@@ -1,0 +1,15 @@
+.DS_Store
+
+# Ruby
+server/.bundle/
+server/data/
+server/vendor/bundle/
+
+# Android / Gradle
+android/.gradle/
+android/local.properties
+android/**/build/
+
+# Editors
+.idea/
+*.iml
