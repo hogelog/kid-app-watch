@@ -14,7 +14,7 @@ The parent uses the web admin UI and ntfy; there is no parent Android app.
 ```sh
 cd server
 bundle install
-ADMIN_AUTH_MODE=none bundle exec rackup -o 127.0.0.1 -p 9292
+ADMIN_AUTH_MODE=none PORT=9292 ./bin/server
 ```
 
 Use `ADMIN_AUTH_MODE=none` only when another gateway already protects `/admin*`. For local-only testing, omit it and set `ADMIN_USER` / `ADMIN_PASSWORD`.
@@ -22,6 +22,8 @@ Use `ADMIN_AUTH_MODE=none` only when another gateway already protects `/admin*`.
 Useful environment variables:
 
 - `DATABASE_PATH`: SQLite path; defaults to `server/data/kid_app_watch.sqlite3`
+- `HOST`: bind address; defaults to `127.0.0.1`
+- `PORT`: bind port; defaults to `9292`
 - `ADMIN_AUTH_MODE`: `basic` or `none`
 - `ADMIN_USER`, `ADMIN_PASSWORD`: Basic auth credentials when `ADMIN_AUTH_MODE=basic`
 
