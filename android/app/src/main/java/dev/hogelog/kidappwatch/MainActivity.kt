@@ -54,8 +54,10 @@ private fun SettingsScreen() {
     var serverUrl by remember { mutableStateOf("") }
     var deviceId by remember { mutableStateOf("") }
     var apiToken by remember { mutableStateOf("") }
-    var cloudflareAccessClientId by remember { mutableStateOf("") }
-    var cloudflareAccessClientSecret by remember { mutableStateOf("") }
+    var extraHeaderName1 by remember { mutableStateOf("") }
+    var extraHeaderValue1 by remember { mutableStateOf("") }
+    var extraHeaderName2 by remember { mutableStateOf("") }
+    var extraHeaderValue2 by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
     LaunchedEffect(repository) {
@@ -64,8 +66,10 @@ private fun SettingsScreen() {
             serverUrl = current.serverUrl
             deviceId = current.deviceId
             apiToken = current.apiToken
-            cloudflareAccessClientId = current.cloudflareAccessClientId
-            cloudflareAccessClientSecret = current.cloudflareAccessClientSecret
+            extraHeaderName1 = current.extraHeaderName1
+            extraHeaderValue1 = current.extraHeaderValue1
+            extraHeaderName2 = current.extraHeaderName2
+            extraHeaderValue2 = current.extraHeaderValue2
         }
     }
 
@@ -123,20 +127,34 @@ private fun SettingsScreen() {
             label = { Text("API token") },
         )
         OutlinedTextField(
-            value = cloudflareAccessClientId,
-            onValueChange = { cloudflareAccessClientId = it },
+            value = extraHeaderName1,
+            onValueChange = { extraHeaderName1 = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            label = { Text("Cloudflare Access client ID") },
+            label = { Text("Extra header 1 name") },
         )
         OutlinedTextField(
-            value = cloudflareAccessClientSecret,
-            onValueChange = { cloudflareAccessClientSecret = it },
+            value = extraHeaderValue1,
+            onValueChange = { extraHeaderValue1 = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            label = { Text("Cloudflare Access client secret") },
+            label = { Text("Extra header 1 value") },
+        )
+        OutlinedTextField(
+            value = extraHeaderName2,
+            onValueChange = { extraHeaderName2 = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Extra header 2 name") },
+        )
+        OutlinedTextField(
+            value = extraHeaderValue2,
+            onValueChange = { extraHeaderValue2 = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            label = { Text("Extra header 2 value") },
         )
 
         Button(
@@ -146,8 +164,10 @@ private fun SettingsScreen() {
                         serverUrl = serverUrl,
                         deviceId = deviceId,
                         apiToken = apiToken,
-                        cloudflareAccessClientId = cloudflareAccessClientId,
-                        cloudflareAccessClientSecret = cloudflareAccessClientSecret,
+                        extraHeaderName1 = extraHeaderName1,
+                        extraHeaderValue1 = extraHeaderValue1,
+                        extraHeaderName2 = extraHeaderName2,
+                        extraHeaderValue2 = extraHeaderValue2,
                     )
                     LaunchMonitorScheduler.enqueue(context)
                 }

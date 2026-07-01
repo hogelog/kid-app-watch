@@ -2,7 +2,7 @@
 
 Detect selected Android app launches on a child device, store events in SQLite, and optionally notify a parent through ntfy.
 
-The server is intended to run behind Cloudflare Access. The parent uses the web admin UI and ntfy; there is no parent Android app.
+The parent uses the web admin UI and ntfy; there is no parent Android app.
 
 ## Components
 
@@ -17,7 +17,7 @@ bundle install
 ADMIN_AUTH_MODE=none bundle exec rackup -o 127.0.0.1 -p 9292
 ```
 
-Use `ADMIN_AUTH_MODE=none` when Cloudflare Access protects `/admin*`. For local-only testing without Access, omit it and set `ADMIN_USER` / `ADMIN_PASSWORD`.
+Use `ADMIN_AUTH_MODE=none` only when another gateway already protects `/admin*`. For local-only testing, omit it and set `ADMIN_USER` / `ADMIN_PASSWORD`.
 
 Useful environment variables:
 
@@ -25,17 +25,12 @@ Useful environment variables:
 - `ADMIN_AUTH_MODE`: `basic` or `none`
 - `ADMIN_USER`, `ADMIN_PASSWORD`: Basic auth credentials when `ADMIN_AUTH_MODE=basic`
 
-## Cloudflare Access
+## Optional Gateway Headers
 
-Recommended policies:
+If the server is behind an auth gateway, configure the Android app with extra request headers. For example, a gateway may require:
 
-- `/admin*`: interactive parent login
-- `/api/*`: service token for child devices
-
-The Android app sends these service token headers when configured:
-
-- `CF-Access-Client-Id`
-- `CF-Access-Client-Secret`
+- header name
+- header value
 
 The app-level device token is still required:
 
@@ -50,7 +45,7 @@ Authorization: Bearer <device-token>
 3. Add watch packages for that device.
 4. Set the device ntfy topic URL if notifications are needed.
 5. Install the Android app on the child device.
-6. Enter server URL, device ID, API token, and Cloudflare Access service token values.
+6. Enter server URL, device ID, API token, and any gateway headers.
 7. Grant Android usage access.
 
 ## API

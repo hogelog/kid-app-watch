@@ -75,13 +75,14 @@ class ApiClient(
 
     private fun Request.Builder.withAuthHeaders(settings: AppSettings): Request.Builder {
         header("Authorization", "Bearer ${settings.apiToken}")
-        if (
-            settings.cloudflareAccessClientId.isNotBlank() &&
-            settings.cloudflareAccessClientSecret.isNotBlank()
-        ) {
-            header("CF-Access-Client-Id", settings.cloudflareAccessClientId)
-            header("CF-Access-Client-Secret", settings.cloudflareAccessClientSecret)
-        }
+        addExtraHeader(settings.extraHeaderName1, settings.extraHeaderValue1)
+        addExtraHeader(settings.extraHeaderName2, settings.extraHeaderValue2)
         return this
+    }
+
+    private fun Request.Builder.addExtraHeader(name: String, value: String) {
+        if (name.isNotBlank() && value.isNotBlank()) {
+            header(name, value)
+        }
     }
 }
