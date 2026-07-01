@@ -1,0 +1,112 @@
+name: PR preview build
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: current
+          cache-read-only: true
+
+      - name: Build debug APK
+        run: gradle -p android :app:assembleDebug --configuration-cache
+
+      - name: Publish preview release
+        id: preview
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          SHORT_SHA="${HEAD_SHA:0:7}"
+          TAG="ci-pr-${PR_NUMBER}"
+          APK_NAME="kidappwatch-pr-${PR_NUMBER}-${SHORT_SHA}-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag
+          fi
+
+          gh release create "$TAG" \
+            --title "Preview build for PR #${PR_NUMBER} (${SHORT_SHA})" \
+            --notes "Automatic debug build of ${HEAD_SHA} for PR #${PR_NUMBER}" \
+            --prerelease \
+            --target "${HEAD_SHA}" \
+            "$APK_NAME"
+
+          {
+            echo "tag=${TAG}"
+            echo "apk_name=${APK_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview build on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          TAG: ${{ steps.preview.outputs.tag }}
+          APK_NAME: ${{ steps.preview.outputs.apk_name }}
+        run: |
+          RELEASE_URL="${SERVER_URL}/${REPO}/releases/tag/${TAG}"
+          APK_URL="${SERVER_URL}/${REPO}/releases/download/${TAG}/${APK_NAME}"
+          MARKER="<!-- kidappwatch-pr-preview-build -->"
+
+          gh api graphql \
+            -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner:String!, $name:String!, $number:Int!) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    comments(first: 100) {
+                      nodes { id body isMinimized }
+                    }
+                  }
+                }
+              }' \
+            --jq ".data.repository.pullRequest.comments.nodes[]
+                  | select((.isMinimized | not) and (.body | startswith(\"${MARKER}\")))
+                  | .id" \
+            | while read -r node_id; do
+                [ -z "$node_id" ] && continue
+                gh api graphql -F id="$node_id" -f query='
+                  mutation($id:ID!) {
+                    minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) {
+                      minimizedComment { isMinimized }
+                    }
+                  }'
+              done
+
+          gh pr comment "$PR_NUMBER" --body "${MARKER}
+          Debug preview build for \`${HEAD_SHA}\` is ready.
+
+          - Release: ${RELEASE_URL}
+          - APK: [\`${APK_NAME}\`](${APK_URL})
+          - Revision: \`${HEAD_SHA}\`"

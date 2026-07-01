@@ -1,0 +1,28 @@
+name: PR preview cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  delete-preview-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete preview release for closed PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          TAG="ci-pr-${PR_NUMBER}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag
+            gh pr comment "$PR_NUMBER" --body "Preview release \`${TAG}\` deleted."
+          else
+            echo "No preview release ${TAG} to delete"
+          fi
