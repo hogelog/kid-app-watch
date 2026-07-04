@@ -1,3 +1,4 @@
+require "base64"
 require "json"
 require "fileutils"
 require "net/http"
@@ -11,6 +12,7 @@ module KidAppWatch
   class App < Sinatra::Base
     DB_PATH = ENV.fetch("DATABASE_PATH", File.expand_path("data/kid_app_watch.sqlite3", __dir__))
     SCHEMA_PATH = File.expand_path("schema.sql", __dir__)
+    ICON_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAB+UlEQVR4nO3UQQ0AIBDAMMC/5+ONAvZoFSzZnXfPAGBf7gDgBEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRAQgIkJEBCAiQkQEICJCRwW+4HJxcDaw/Okk0AAAAASUVORK5CYII="
 
     configure do
       set :show_exceptions, false
@@ -106,6 +108,45 @@ module KidAppWatch
     get "/health" do
       content_type :json
       JSON.generate(ok: true)
+    end
+
+    get "/manifest.webmanifest" do
+      content_type "application/manifest+json"
+      JSON.pretty_generate(
+        name: "Kid App Watch",
+        short_name: "KWatch",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [
+          {
+            src: "/icon.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any maskable"
+          }
+        ]
+      )
+    end
+
+    get "/service-worker.js" do
+      content_type "application/javascript"
+      <<~JS
+        self.addEventListener("install", (event) => {
+          event.waitUntil(self.skipWaiting());
+        });
+
+        self.addEventListener("activate", (event) => {
+          event.waitUntil(self.clients.claim());
+        });
+      JS
+    end
+
+    get "/icon.png" do
+      content_type "image/png"
+      Base64.decode64(ICON_PNG_BASE64)
     end
 
     get "/api/devices/:id/config" do
@@ -346,6 +387,9 @@ __END__
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kid App Watch</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="/icon.png">
   <style>
     :root {
       color-scheme: light dark;
@@ -436,6 +480,11 @@ __END__
     </header>
     <%= yield %>
   </main>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/service-worker.js");
+    }
+  </script>
 </body>
 </html>
 
