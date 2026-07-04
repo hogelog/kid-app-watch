@@ -414,12 +414,16 @@ __END__
     }
     body {
       background: linear-gradient(180deg, color-mix(in srgb, var(--pico-primary-background) 12%, transparent), transparent 280px), var(--pico-background-color);
+      overflow-x: hidden;
     }
     body > main > header {
       align-items: center;
+      flex-wrap: wrap;
       margin-bottom: 1.5rem;
     }
     body > main > header h1 {
+      font-size: clamp(2.2rem, 10vw, 4rem);
+      line-height: 1.05;
       margin: 0;
     }
     section {
@@ -428,10 +432,15 @@ __END__
       border-radius: var(--pico-border-radius);
       box-shadow: var(--pico-card-box-shadow);
       margin: 1.25rem 0;
+      overflow-x: auto;
       padding: 1.25rem;
     }
     table {
       margin-bottom: 0;
+      min-width: max-content;
+    }
+    th, td {
+      white-space: nowrap;
     }
     form {
       display: grid;
