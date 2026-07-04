@@ -42,13 +42,12 @@ Authorization: Bearer <device-token>
 
 ## Setup Flow
 
-1. Open `/admin`.
-2. Create a device and copy its API token.
-3. Add watch packages for that device.
-4. Set the device ntfy topic URL if notifications are needed.
-5. Install the Android app on the child device.
-6. Enter server URL, device ID, API token, and any gateway headers.
-7. Grant Android usage access.
+1. Install the Android app on the child device.
+2. Enter server URL, device ID, API token, and any gateway headers.
+3. Grant Android usage access.
+4. Open `/admin` after the first device config request or event. The device is registered automatically with the provided device ID and API token.
+5. Add watch packages for that device.
+6. Set the device ntfy topic URL if notifications are needed.
 
 ## API
 
