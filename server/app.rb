@@ -499,6 +499,10 @@ __END__
       padding: 2px 8px;
       font-size: 0.86rem;
     }
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -507,6 +511,9 @@ __END__
       <h1><a href="/">Kid App Watch</a></h1>
     </header>
     <%= yield %>
+    <footer>
+      <small><a href="https://github.com/hogelog/kid-app-watch/releases/tag/main-debug">Android APK</a></small>
+    </footer>
   </main>
   <script>
     if ("serviceWorker" in navigator) {
@@ -518,12 +525,7 @@ __END__
 
 @@ watch
 <section>
-  <p><a href="https://github.com/hogelog/kid-app-watch/releases/tag/main-debug">Install Android app</a></p>
-</section>
-
-<section>
   <h2>Devices</h2>
-  <p class="muted">Read-only launch history.</p>
   <table>
     <thead>
       <tr>
