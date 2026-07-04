@@ -111,7 +111,7 @@ module KidAppWatch
     end
 
     get "/manifest.webmanifest" do
-      cache_control :no_cache
+      response["Cache-Control"] = "no-store, max-age=0"
       content_type "application/manifest+json"
       JSON.pretty_generate(
         name: "Kid App Watch",
@@ -133,7 +133,7 @@ module KidAppWatch
     end
 
     get "/service-worker.js" do
-      cache_control :no_cache
+      response["Cache-Control"] = "no-store, max-age=0"
       content_type "application/javascript"
       <<~JS
         self.addEventListener("install", (event) => {
@@ -147,7 +147,7 @@ module KidAppWatch
     end
 
     get "/icon.png" do
-      cache_control :no_cache
+      response["Cache-Control"] = "no-store, max-age=0"
       content_type "image/png"
       Base64.decode64(ICON_PNG_BASE64)
     end
