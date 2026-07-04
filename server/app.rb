@@ -518,8 +518,7 @@ __END__
 
 @@ watch
 <section>
-  <h2>Install Android app</h2>
-  <p><a href="https://github.com/hogelog/kid-app-watch/releases/tag/main-debug">Download the latest debug APK from GitHub Releases</a></p>
+  <p><a href="https://github.com/hogelog/kid-app-watch/releases/tag/main-debug">Install Android app</a></p>
 </section>
 
 <section>
