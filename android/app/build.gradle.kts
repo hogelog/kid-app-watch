@@ -3,6 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val ciVersionCode = providers.environmentVariable("GITHUB_RUN_NUMBER")
+    .orElse(providers.environmentVariable("VERSION_CODE"))
+    .map(String::toInt)
+    .orElse(1)
+val ciVersionName = ciVersionCode.map { code -> "0.1.$code" }
+
 android {
     namespace = "dev.hogelog.kidappwatch"
     compileSdk = 36
@@ -11,8 +17,8 @@ android {
         applicationId = "dev.hogelog.kidappwatch"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = ciVersionCode.get()
+        versionName = ciVersionName.get()
     }
 
     buildFeatures {
