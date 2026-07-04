@@ -437,10 +437,29 @@ __END__
     }
     table {
       margin-bottom: 0;
-      min-width: max-content;
+      table-layout: auto;
+      width: 100%;
     }
     th, td {
-      white-space: nowrap;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+    @media (max-width: 700px) {
+      body > main {
+        padding-inline: 0.75rem;
+      }
+      section {
+        padding: 0.9rem;
+      }
+      table {
+        font-size: 0.82rem;
+      }
+      th, td {
+        padding: 0.45rem 0.35rem;
+      }
+      .optional-mobile {
+        display: none;
+      }
     }
     form {
       display: grid;
@@ -533,7 +552,7 @@ __END__
         <th>Detected at</th>
         <th>Device</th>
         <th>App</th>
-        <th>Package</th>
+        <th class="optional-mobile">Package</th>
         <th>Notified</th>
       </tr>
     </thead>
@@ -543,7 +562,7 @@ __END__
           <td><%= event.fetch("detected_at") %></td>
           <td><a href="/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
           <td><%= event.fetch("app_label") %></td>
-          <td class="token"><%= event.fetch("package_name") %></td>
+          <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
           <td><span class="pill"><%= event.fetch("notified").to_i == 1 ? "notified" : "stored" %></span></td>
         </tr>
       <% end %>
@@ -586,8 +605,8 @@ __END__
       <tr>
         <th>Detected at</th>
         <th>App</th>
-        <th>Package</th>
-        <th>Source</th>
+        <th class="optional-mobile">Package</th>
+        <th class="optional-mobile">Source</th>
         <th>Notified</th>
       </tr>
     </thead>
@@ -596,8 +615,8 @@ __END__
         <tr>
           <td><%= event.fetch("detected_at") %></td>
           <td><%= event.fetch("app_label") %></td>
-          <td class="token"><%= event.fetch("package_name") %></td>
-          <td><%= event.fetch("source") %></td>
+          <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
+          <td class="optional-mobile"><%= event.fetch("source") %></td>
           <td><span class="pill"><%= event.fetch("notified").to_i == 1 ? "notified" : "stored" %></span></td>
         </tr>
       <% end %>
