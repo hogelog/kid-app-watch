@@ -71,6 +71,27 @@ module KidAppWatch
       def redirect_back_to_device(device_id)
         redirect "/admin/devices/#{Rack::Utils.escape_path(device_id)}"
       end
+
+      def load_watch_overview!
+        @devices = db.execute(<<~SQL)
+          SELECT d.id,
+                 d.name,
+                 COUNT(DISTINCT w.id) AS watch_package_count,
+                 MAX(e.detected_at) AS last_detected_at
+          FROM devices d
+          LEFT JOIN watch_packages w ON w.device_id = d.id AND w.enabled = 1
+          LEFT JOIN app_launch_events e ON e.device_id = d.id
+          GROUP BY d.id
+          ORDER BY d.name COLLATE NOCASE, d.id COLLATE NOCASE
+        SQL
+        @events = db.execute(<<~SQL)
+          SELECT e.*, d.name AS device_name
+          FROM app_launch_events e
+          JOIN devices d ON d.id = e.device_id
+          ORDER BY e.detected_at DESC, e.id DESC
+          LIMIT 100
+        SQL
+      end
     end
 
     before "/admin*" do
@@ -78,7 +99,8 @@ module KidAppWatch
     end
 
     get "/" do
-      redirect "/watch"
+      load_watch_overview!
+      erb :watch
     end
 
     get "/health" do
@@ -137,24 +159,7 @@ module KidAppWatch
     end
 
     get "/watch" do
-      @devices = db.execute(<<~SQL)
-        SELECT d.id,
-               d.name,
-               COUNT(DISTINCT w.id) AS watch_package_count,
-               MAX(e.detected_at) AS last_detected_at
-        FROM devices d
-        LEFT JOIN watch_packages w ON w.device_id = d.id AND w.enabled = 1
-        LEFT JOIN app_launch_events e ON e.device_id = d.id
-        GROUP BY d.id
-        ORDER BY d.name COLLATE NOCASE, d.id COLLATE NOCASE
-      SQL
-      @events = db.execute(<<~SQL)
-        SELECT e.*, d.name AS device_name
-        FROM app_launch_events e
-        JOIN devices d ON d.id = e.device_id
-        ORDER BY e.detected_at DESC, e.id DESC
-        LIMIT 100
-      SQL
+      load_watch_overview!
       erb :watch
     end
 
