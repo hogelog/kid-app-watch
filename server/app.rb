@@ -505,10 +505,6 @@ __END__
   <main class="container">
     <header>
       <h1><a href="/">Kid App Watch</a></h1>
-      <span class="nav">
-        <a href="/">Watch</a>
-        <a href="/admin">Admin</a>
-      </span>
     </header>
     <%= yield %>
   </main>
