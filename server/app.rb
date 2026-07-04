@@ -111,6 +111,7 @@ module KidAppWatch
     end
 
     get "/manifest.webmanifest" do
+      cache_control :no_cache
       content_type "application/manifest+json"
       JSON.pretty_generate(
         name: "Kid App Watch",
@@ -122,7 +123,7 @@ module KidAppWatch
         theme_color: "#0f172a",
         icons: [
           {
-            src: "/icon.png",
+            src: "/icon.png?v=2",
             sizes: "192x192",
             type: "image/png",
             purpose: "any maskable"
@@ -132,6 +133,7 @@ module KidAppWatch
     end
 
     get "/service-worker.js" do
+      cache_control :no_cache
       content_type "application/javascript"
       <<~JS
         self.addEventListener("install", (event) => {
@@ -145,6 +147,7 @@ module KidAppWatch
     end
 
     get "/icon.png" do
+      cache_control :no_cache
       content_type "image/png"
       Base64.decode64(ICON_PNG_BASE64)
     end
