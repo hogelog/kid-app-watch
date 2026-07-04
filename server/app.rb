@@ -84,19 +84,6 @@ module KidAppWatch
         require_api_device!
       end
 
-      def protected_admin!
-        return if ENV.fetch("ADMIN_AUTH_MODE", "basic") == "none"
-
-        user = ENV.fetch("ADMIN_USER", "admin")
-        password = ENV.fetch("ADMIN_PASSWORD", "change-me")
-
-        @auth ||= Rack::Auth::Basic::Request.new(request.env)
-        return if @auth.provided? && @auth.basic? && @auth.credentials == [user, password]
-
-        response["WWW-Authenticate"] = %(Basic realm="Kid App Watch Admin")
-        halt 401, "Authorization required\n"
-      end
-
       def bool_param(name)
         params[name].to_s == "1" ? 1 : 0
       end
@@ -125,10 +112,6 @@ module KidAppWatch
           LIMIT 100
         SQL
       end
-    end
-
-    before "/admin*" do
-      protected_admin!
     end
 
     get "/" do
