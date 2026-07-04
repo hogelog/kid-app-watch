@@ -395,44 +395,31 @@ __END__
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
   <link rel="icon" href="/icon.png?v=<%= KidAppWatch::App::ICON_PNG_DIGEST %>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
     :root {
-      color-scheme: light dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --pico-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     body {
+      background: linear-gradient(180deg, color-mix(in srgb, var(--pico-primary-background) 12%, transparent), transparent 280px), var(--pico-background-color);
+    }
+    body > main > header {
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    body > main > header h1 {
       margin: 0;
-      background: Canvas;
-      color: CanvasText;
-    }
-    main {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-    header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    h1, h2 {
-      margin: 0 0 12px;
     }
     section {
-      margin: 28px 0;
+      background: var(--pico-card-background-color);
+      border: 1px solid var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
+      box-shadow: var(--pico-card-box-shadow);
+      margin: 1.25rem 0;
+      padding: 1.25rem;
     }
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-    }
-    th, td {
-      border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
+      margin-bottom: 0;
     }
     form {
       display: grid;
@@ -467,7 +454,7 @@ __END__
     }
     .pill {
       display: inline-block;
-      border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+      border: 1px solid var(--pico-muted-border-color);
       border-radius: 999px;
       padding: 2px 8px;
       font-size: 0.86rem;
@@ -475,7 +462,7 @@ __END__
   </style>
 </head>
 <body>
-  <main>
+  <main class="container">
     <header>
       <h1><a href="/">Kid App Watch</a></h1>
       <span class="nav">
