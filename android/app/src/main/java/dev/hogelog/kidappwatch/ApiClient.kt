@@ -75,14 +75,23 @@ class ApiClient(
 
     private fun Request.Builder.withAuthHeaders(settings: AppSettings): Request.Builder {
         header("Authorization", "Bearer ${settings.apiToken}")
-        addExtraHeader(settings.extraHeaderName1, settings.extraHeaderValue1)
-        addExtraHeader(settings.extraHeaderName2, settings.extraHeaderValue2)
+        for ((name, value) in parseExtraHeaders(settings.extraHeaders)) {
+            header(name, value)
+        }
         return this
     }
 
-    private fun Request.Builder.addExtraHeader(name: String, value: String) {
-        if (name.isNotBlank() && value.isNotBlank()) {
-            header(name, value)
+    private fun parseExtraHeaders(rawHeaders: String): List<Pair<String, String>> = rawHeaders
+        .lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .mapNotNull { line ->
+            val separator = line.indexOf(':')
+            if (separator <= 0) return@mapNotNull null
+
+            val name = line.substring(0, separator).trim()
+            val value = line.substring(separator + 1).trim()
+            if (name.isBlank() || value.isBlank()) null else name to value
         }
-    }
+        .toList()
 }

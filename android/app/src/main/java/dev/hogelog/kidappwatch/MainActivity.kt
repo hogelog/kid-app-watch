@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
@@ -52,24 +51,14 @@ private fun SettingsScreen() {
 
     var settings by remember { mutableStateOf(AppSettings()) }
     var serverUrl by remember { mutableStateOf("") }
-    var deviceId by remember { mutableStateOf("") }
-    var apiToken by remember { mutableStateOf("") }
-    var extraHeaderName1 by remember { mutableStateOf("") }
-    var extraHeaderValue1 by remember { mutableStateOf("") }
-    var extraHeaderName2 by remember { mutableStateOf("") }
-    var extraHeaderValue2 by remember { mutableStateOf("") }
+    var extraHeaders by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
     LaunchedEffect(repository) {
         repository.settings.collect { current ->
             settings = current
             serverUrl = current.serverUrl
-            deviceId = current.deviceId
-            apiToken = current.apiToken
-            extraHeaderName1 = current.extraHeaderName1
-            extraHeaderValue1 = current.extraHeaderValue1
-            extraHeaderName2 = current.extraHeaderName2
-            extraHeaderValue2 = current.extraHeaderValue2
+            extraHeaders = current.extraHeaders
         }
     }
 
@@ -111,50 +100,14 @@ private fun SettingsScreen() {
             label = { Text("Server URL") },
             placeholder = { Text("https://example.com") },
         )
+        Text("Device ID: ${settings.deviceId}", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
-            value = deviceId,
-            onValueChange = { deviceId = it },
+            value = extraHeaders,
+            onValueChange = { extraHeaders = it },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Device ID") },
-        )
-        OutlinedTextField(
-            value = apiToken,
-            onValueChange = { apiToken = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            label = { Text("API token") },
-        )
-        OutlinedTextField(
-            value = extraHeaderName1,
-            onValueChange = { extraHeaderName1 = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Extra header 1 name") },
-        )
-        OutlinedTextField(
-            value = extraHeaderValue1,
-            onValueChange = { extraHeaderValue1 = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            label = { Text("Extra header 1 value") },
-        )
-        OutlinedTextField(
-            value = extraHeaderName2,
-            onValueChange = { extraHeaderName2 = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Extra header 2 name") },
-        )
-        OutlinedTextField(
-            value = extraHeaderValue2,
-            onValueChange = { extraHeaderValue2 = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            label = { Text("Extra header 2 value") },
+            minLines = 3,
+            label = { Text("Extra headers") },
+            placeholder = { Text("CF-Access-Client-Id: ...\nCF-Access-Client-Secret: ...") },
         )
 
         Button(
@@ -162,12 +115,7 @@ private fun SettingsScreen() {
                 scope.launch {
                     repository.saveConnection(
                         serverUrl = serverUrl,
-                        deviceId = deviceId,
-                        apiToken = apiToken,
-                        extraHeaderName1 = extraHeaderName1,
-                        extraHeaderValue1 = extraHeaderValue1,
-                        extraHeaderName2 = extraHeaderName2,
-                        extraHeaderValue2 = extraHeaderValue2,
+                        extraHeaders = extraHeaders,
                     )
                     LaunchMonitorScheduler.enqueue(context)
                 }

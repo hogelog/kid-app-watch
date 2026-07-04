@@ -27,23 +27,21 @@ Useful environment variables:
 
 ## Optional Gateway Headers
 
-If the server is behind an auth gateway, configure the Android app with extra request headers. For example, a gateway may require:
-
-- header name
-- header value
-
-The app-level device token is still required:
+If the server is behind an auth gateway, configure the Android app with extra request headers, one per line:
 
 ```http
-Authorization: Bearer <device-token>
+CF-Access-Client-Id: <client-id>
+CF-Access-Client-Secret: <client-secret>
 ```
+
+The app generates its device ID and app-level bearer token automatically.
 
 ## Setup Flow
 
 1. Install the Android app on the child device.
-2. Enter server URL, device ID, API token, and any gateway headers.
+2. Enter server URL and any gateway headers.
 3. Grant Android usage access.
-4. Open `/admin` after the first device config request or event. The device is registered automatically with the provided device ID and API token.
+4. Open `/admin` after the first device config request or event. The device is registered automatically.
 5. Add watch packages for that device.
 6. Set the device ntfy topic URL if notifications are needed.
 

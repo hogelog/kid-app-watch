@@ -1,9 +1,11 @@
 package dev.hogelog.kidappwatch
 
 import android.content.Context
+import android.provider.Settings
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
+import java.security.MessageDigest
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
@@ -18,10 +21,7 @@ data class AppSettings(
     val serverUrl: String = "",
     val deviceId: String = "",
     val apiToken: String = "",
-    val extraHeaderName1: String = "",
-    val extraHeaderValue1: String = "",
-    val extraHeaderName2: String = "",
-    val extraHeaderValue2: String = "",
+    val extraHeaders: String = "",
     val lastEventSummary: String = "",
     val lastScanAtMillis: Long = 0L,
     val monitorEnabled: Boolean = true,
@@ -32,6 +32,7 @@ class SettingsRepository(private val context: Context) {
         val serverUrl = stringPreferencesKey("server_url")
         val deviceId = stringPreferencesKey("device_id")
         val apiToken = stringPreferencesKey("api_token")
+        val extraHeaders = stringPreferencesKey("extra_headers")
         val extraHeaderName1 = stringPreferencesKey("extra_header_name_1")
         val extraHeaderValue1 = stringPreferencesKey("extra_header_value_1")
         val extraHeaderName2 = stringPreferencesKey("extra_header_name_2")
@@ -48,12 +49,9 @@ class SettingsRepository(private val context: Context) {
         .map { preferences ->
             AppSettings(
                 serverUrl = preferences[Keys.serverUrl].orEmpty(),
-                deviceId = preferences[Keys.deviceId].orEmpty(),
-                apiToken = preferences[Keys.apiToken].orEmpty(),
-                extraHeaderName1 = preferences[Keys.extraHeaderName1].orEmpty(),
-                extraHeaderValue1 = preferences[Keys.extraHeaderValue1].orEmpty(),
-                extraHeaderName2 = preferences[Keys.extraHeaderName2].orEmpty(),
-                extraHeaderValue2 = preferences[Keys.extraHeaderValue2].orEmpty(),
+                deviceId = preferences[Keys.deviceId].orEmpty().ifBlank { defaultDeviceId() },
+                apiToken = preferences[Keys.apiToken].orEmpty().ifBlank { defaultApiToken() },
+                extraHeaders = preferences[Keys.extraHeaders] ?: legacyExtraHeaders(preferences),
                 lastEventSummary = preferences[Keys.lastEventSummary].orEmpty(),
                 lastScanAtMillis = preferences[Keys.lastScanAtMillis] ?: 0L,
                 monitorEnabled = preferences[Keys.monitorEnabled] ?: true,
@@ -62,21 +60,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveConnection(
         serverUrl: String,
-        deviceId: String,
-        apiToken: String,
-        extraHeaderName1: String,
-        extraHeaderValue1: String,
-        extraHeaderName2: String,
-        extraHeaderValue2: String,
+        extraHeaders: String,
     ) {
         context.dataStore.edit { preferences ->
             preferences[Keys.serverUrl] = serverUrl.trim().trimEnd('/')
-            preferences[Keys.deviceId] = deviceId.trim()
-            preferences[Keys.apiToken] = apiToken.trim()
-            preferences[Keys.extraHeaderName1] = extraHeaderName1.trim()
-            preferences[Keys.extraHeaderValue1] = extraHeaderValue1.trim()
-            preferences[Keys.extraHeaderName2] = extraHeaderName2.trim()
-            preferences[Keys.extraHeaderValue2] = extraHeaderValue2.trim()
+            preferences[Keys.deviceId] = defaultDeviceId()
+            preferences[Keys.apiToken] = defaultApiToken()
+            preferences[Keys.extraHeaders] = extraHeaders.trim()
         }
     }
 
@@ -91,4 +81,25 @@ class SettingsRepository(private val context: Context) {
             preferences[Keys.lastScanAtMillis] = millis
         }
     }
+
+    private fun defaultDeviceId(): String {
+        val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+            ?.takeIf { it.isNotBlank() }
+            ?: "unknown"
+        return "android-$androidId"
+    }
+
+    private fun defaultApiToken(): String {
+        val input = "${defaultDeviceId()}:${context.packageName}:kid-app-watch"
+        return MessageDigest.getInstance("SHA-256")
+            .digest(input.toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte) }
+    }
+
+    private fun legacyExtraHeaders(preferences: Preferences): String = listOf(
+        preferences[Keys.extraHeaderName1].orEmpty() to preferences[Keys.extraHeaderValue1].orEmpty(),
+        preferences[Keys.extraHeaderName2].orEmpty() to preferences[Keys.extraHeaderValue2].orEmpty(),
+    )
+        .filter { (name, value) -> name.isNotBlank() && value.isNotBlank() }
+        .joinToString("\n") { (name, value) -> "$name: $value" }
 }

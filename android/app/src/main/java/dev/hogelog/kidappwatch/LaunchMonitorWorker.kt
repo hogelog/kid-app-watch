@@ -18,7 +18,7 @@ class LaunchMonitorWorker(
     override suspend fun doWork(): Result {
         val settings = repository.settings.first()
         if (!settings.monitorEnabled) return Result.success()
-        if (settings.serverUrl.isBlank() || settings.deviceId.isBlank() || settings.apiToken.isBlank()) {
+        if (settings.serverUrl.isBlank()) {
             return Result.success()
         }
         if (!UsageAccessHelper.hasUsageAccess(applicationContext)) {
