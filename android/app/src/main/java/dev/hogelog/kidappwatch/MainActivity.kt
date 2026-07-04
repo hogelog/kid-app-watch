@@ -27,7 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +54,7 @@ private fun SettingsScreen() {
     var settings by remember { mutableStateOf(AppSettings()) }
     var serverUrl by remember { mutableStateOf("") }
     var extraHeaders by remember { mutableStateOf("") }
+    var testStatus by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
     LaunchedEffect(repository) {
@@ -110,18 +113,57 @@ private fun SettingsScreen() {
             placeholder = { Text("CF-Access-Client-Id: ...\nCF-Access-Client-Secret: ...") },
         )
 
-        Button(
-            onClick = {
-                scope.launch {
-                    repository.saveConnection(
-                        serverUrl = serverUrl,
-                        extraHeaders = extraHeaders,
-                    )
-                    LaunchMonitorScheduler.enqueue(context)
-                }
-            },
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Save")
+            Button(
+                onClick = {
+                    scope.launch {
+                        repository.saveConnection(
+                            serverUrl = serverUrl,
+                            extraHeaders = extraHeaders,
+                        )
+                        LaunchMonitorScheduler.enqueue(context)
+                    }
+                },
+            ) {
+                Text("Save")
+            }
+            Button(
+                onClick = {
+                    scope.launch {
+                        testStatus = "Testing..."
+                        repository.saveConnection(
+                            serverUrl = serverUrl,
+                            extraHeaders = extraHeaders,
+                        )
+
+                        val testSettings = settings.copy(
+                            serverUrl = serverUrl.trim().trimEnd('/'),
+                            extraHeaders = extraHeaders.trim(),
+                        )
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                ApiClient().fetchConfig(testSettings).size
+                            }
+                        }.fold(
+                            onSuccess = { count ->
+                                testStatus = "OK: $count watched apps"
+                                LaunchMonitorScheduler.enqueue(context)
+                            },
+                            onFailure = { error ->
+                                testStatus = "Failed: ${error.message ?: error::class.java.simpleName}"
+                            },
+                        )
+                    }
+                },
+            ) {
+                Text("Test connection")
+            }
+        }
+        if (testStatus.isNotBlank()) {
+            Text(testStatus)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
