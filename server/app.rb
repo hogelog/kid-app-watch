@@ -158,12 +158,7 @@ module KidAppWatch
       halt_json 422, error: "missing_field", field: error.key
     end
 
-    get "/watch" do
-      load_watch_overview!
-      erb :watch
-    end
-
-    get "/watch/devices/:id" do
+    get "/devices/:id" do
       @device = db.get_first_row("SELECT id, name FROM devices WHERE id = ?", params[:id])
       halt 404, "Device not found" unless @device
 
@@ -433,9 +428,9 @@ __END__
 <body>
   <main>
     <header>
-      <h1><a href="/watch">Kid App Watch</a></h1>
+      <h1><a href="/">Kid App Watch</a></h1>
       <span class="nav">
-        <a href="/watch">Watch</a>
+        <a href="/">Watch</a>
         <a href="/admin">Admin</a>
       </span>
     </header>
@@ -459,7 +454,7 @@ __END__
     <tbody>
       <% @devices.each do |device| %>
         <tr>
-          <td><a href="/watch/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>"><%= device.fetch("name") %></a></td>
+          <td><a href="/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>"><%= device.fetch("name") %></a></td>
           <td><%= device.fetch("watch_package_count") %></td>
           <td><%= device.fetch("last_detected_at") || "-" %></td>
         </tr>
@@ -484,7 +479,7 @@ __END__
       <% @events.each do |event| %>
         <tr>
           <td><%= event.fetch("detected_at") %></td>
-          <td><a href="/watch/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
+          <td><a href="/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
           <td><%= event.fetch("app_label") %></td>
           <td class="token"><%= event.fetch("package_name") %></td>
           <td><span class="pill"><%= event.fetch("notified").to_i == 1 ? "notified" : "stored" %></span></td>
@@ -497,7 +492,7 @@ __END__
 @@ watch_device
 <section>
   <h2><%= @device.fetch("name") %></h2>
-  <p><a href="/watch">← Back to watch</a></p>
+  <p><a href="/">← Back to watch</a></p>
 </section>
 
 <section>
