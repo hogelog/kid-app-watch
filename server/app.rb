@@ -518,8 +518,13 @@ __END__
 
 @@ watch
 <section>
+  <h2>Install Android app</h2>
+  <p><a href="https://github.com/hogelog/kid-app-watch/releases/tag/main-debug">Download the latest debug APK from GitHub Releases</a></p>
+</section>
+
+<section>
   <h2>Devices</h2>
-  <p class="muted">Read-only launch history. Use Admin only for configuration changes.</p>
+  <p class="muted">Read-only launch history.</p>
   <table>
     <thead>
       <tr>
