@@ -112,7 +112,6 @@ private fun AppScreen() {
             MainPanel(
                 settings = settings,
                 status = status,
-                hasUsageAccess = hasUsageAccess,
                 onCheckNow = {
                     scope.launch {
                         hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
@@ -140,11 +139,9 @@ private fun AppScreen() {
 private fun MainPanel(
     settings: AppSettings,
     status: String,
-    hasUsageAccess: Boolean,
     onCheckNow: () -> Unit,
     onOpenWatchPage: () -> Unit,
 ) {
-    Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
     if (status.isNotBlank()) {
         Text(status, style = MaterialTheme.typography.bodySmall)
     }
@@ -186,7 +183,7 @@ private fun SettingsPanel(
     Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
     if (!hasUsageAccess) {
         Button(onClick = onOpenUsageAccess) {
-            Text("Open usage access")
+            Text("Grant usage access")
         }
     }
     OutlinedTextField(
