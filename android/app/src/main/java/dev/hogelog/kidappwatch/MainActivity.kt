@@ -1,6 +1,7 @@
 package dev.hogelog.kidappwatch
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,9 @@ private fun SettingsScreen() {
     ) {
         Text("Kid App Watch", style = MaterialTheme.typography.headlineMedium)
         Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
+        if (saveStatus.isNotBlank()) {
+            Text(saveStatus, style = MaterialTheme.typography.bodySmall)
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -90,6 +94,7 @@ private fun SettingsScreen() {
             Button(
                 onClick = {
                     hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
+                    Toast.makeText(context, "Refreshed", Toast.LENGTH_SHORT).show()
                 },
             ) {
                 Text("Refresh")
@@ -128,6 +133,7 @@ private fun SettingsScreen() {
                         )
                         LaunchMonitorScheduler.enqueue(context)
                         saveStatus = "Saved"
+                        Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
                     }
                 },
             ) {
@@ -164,9 +170,6 @@ private fun SettingsScreen() {
             ) {
                 Text("Test")
             }
-        }
-        if (saveStatus.isNotBlank()) {
-            Text(saveStatus)
         }
         if (testStatus.isNotBlank()) {
             Text(testStatus)
