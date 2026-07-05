@@ -1,5 +1,7 @@
 package dev.hogelog.kidappwatch
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -148,6 +150,19 @@ private fun SettingsScreen() {
                 },
             ) {
                 Text("Save")
+            }
+            Button(
+                onClick = {
+                    val baseUrl = serverUrl.trim().trimEnd('/')
+                    if (baseUrl.isBlank()) {
+                        Toast.makeText(context, "Server URL is empty", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val url = "$baseUrl/?device_id=${Uri.encode(settings.deviceId)}"
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                },
+            ) {
+                Text("Open watch page")
             }
         }
         Spacer(modifier = Modifier.height(12.dp))

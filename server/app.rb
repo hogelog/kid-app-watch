@@ -68,8 +68,27 @@ module KidAppWatch
         redirect "/admin/devices/#{Rack::Utils.escape_path(device_id)}"
       end
 
-      def load_watch_overview!
-        @devices = db.execute(<<~SQL)
+      def current_watch_device_id!
+        device_id = params["device_id"].to_s.strip
+        if device_id.empty?
+          device_id = request.cookies["kid_app_watch_device_id"].to_s.strip
+        else
+          response.set_cookie(
+            "kid_app_watch_device_id",
+            value: device_id,
+            path: "/",
+            max_age: 60 * 60 * 24 * 365 * 100,
+            same_site: :lax,
+            httponly: true,
+          )
+        end
+
+        halt 401, "Open this page from the Android app first.\n" if device_id.empty?
+        device_id
+      end
+
+      def load_watch_overview!(device_id)
+        @devices = db.execute(<<~SQL, [device_id])
           SELECT d.id,
                  d.name,
                  COUNT(DISTINCT w.id) AS watch_package_count,
@@ -77,15 +96,17 @@ module KidAppWatch
           FROM devices d
           LEFT JOIN watch_packages w ON w.device_id = d.id AND w.enabled = 1
           LEFT JOIN app_launch_events e ON e.device_id = d.id
+          WHERE d.id = ?
           GROUP BY d.id
           ORDER BY d.name COLLATE NOCASE, d.id COLLATE NOCASE
         SQL
-        @events = db.execute(<<~SQL)
+        @events = db.execute(<<~SQL, [device_id])
           SELECT e.*, d.name AS device_name, w.icon_url
           FROM app_launch_events e
           JOIN devices d ON d.id = e.device_id
           LEFT JOIN watch_packages w
             ON w.device_id = e.device_id AND w.package_name = e.package_name
+          WHERE e.device_id = ?
           ORDER BY e.detected_at DESC, e.id DESC
           LIMIT 100
         SQL
@@ -93,7 +114,7 @@ module KidAppWatch
     end
 
     get "/" do
-      load_watch_overview!
+      load_watch_overview!(current_watch_device_id!)
       erb :watch
     end
 
@@ -195,6 +216,8 @@ module KidAppWatch
     end
 
     get "/devices/:id" do
+      halt 403, "Forbidden\n" unless params[:id] == current_watch_device_id!
+
       @device = db.get_first_row("SELECT id, name FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless @device
 
