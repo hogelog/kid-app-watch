@@ -745,6 +745,7 @@ __END__
       <tr>
         <th>Detected at</th>
         <th>App</th>
+        <th>Duration</th>
         <th class="optional-mobile">Package</th>
         <th class="optional-mobile">Source</th>
       </tr>
@@ -752,13 +753,15 @@ __END__
     <tbody>
       <% @events.each do |event| %>
         <tr>
-          <td><%= event.fetch("detected_at") %></td>
+          <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
           <td>
             <% unless event.fetch("icon_url", "").to_s.empty? %>
               <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
             <% end %>
             <%= event.fetch("app_label") %>
           </td>
+          <% duration = format_duration(event.fetch("duration_seconds", nil)) %>
+          <td><%= duration.empty? ? "-" : duration %></td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
           <td class="optional-mobile"><%= event.fetch("source") %></td>
         </tr>
@@ -879,13 +882,14 @@ __END__
         <th>Detected at</th>
         <th>Package</th>
         <th>Label</th>
+        <th>Duration</th>
         <th>Source</th>
       </tr>
     </thead>
     <tbody>
       <% @events.each do |event| %>
         <tr>
-          <td><%= event.fetch("detected_at") %></td>
+          <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
           <td class="token"><%= event.fetch("package_name") %></td>
           <td>
             <% unless event.fetch("icon_url", "").to_s.empty? %>
@@ -893,6 +897,8 @@ __END__
             <% end %>
             <%= event.fetch("app_label") %>
           </td>
+          <% duration = format_duration(event.fetch("duration_seconds", nil)) %>
+          <td><%= duration.empty? ? "-" : duration %></td>
           <td><%= event.fetch("source") %></td>
         </tr>
       <% end %>
