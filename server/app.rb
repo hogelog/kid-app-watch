@@ -227,21 +227,6 @@ module KidAppWatch
       erb :admin
     end
 
-    post "/admin/devices" do
-      id = params.fetch("id", "").strip
-      name = params.fetch("name", "").strip
-      halt 422, "Device ID is required" if id.empty?
-      halt 422, "Name is required" if name.empty?
-
-      db.execute(<<~SQL, id, name, now_iso, now_iso)
-        INSERT INTO devices (id, name, created_at, updated_at)
-        VALUES (?, ?, ?, ?)
-      SQL
-      redirect_back_to_device(id)
-    rescue SQLite3::ConstraintException
-      halt 409, "Device already exists"
-    end
-
     get "/admin/devices/:id" do
       @device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
       halt 404, "Device not found" unless @device
@@ -624,21 +609,6 @@ __END__
       <% end %>
     </tbody>
   </table>
-</section>
-
-<section>
-  <h2>Add device</h2>
-  <form method="post" action="/admin/devices">
-    <label>
-      Device ID
-      <input name="id" placeholder="child-pixel" required>
-    </label>
-    <label>
-      Name
-      <input name="name" placeholder="Child Pixel" required>
-    </label>
-    <button type="submit">Create</button>
-  </form>
 </section>
 
 @@ device
