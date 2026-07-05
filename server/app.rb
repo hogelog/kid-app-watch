@@ -33,8 +33,14 @@ module KidAppWatch
         Time.now.iso8601
       end
 
+      def format_jst_date(value)
+        Time.parse(value.to_s).getlocal("+09:00").strftime("%-m/%-d")
+      rescue ArgumentError
+        value
+      end
+
       def format_jst_minute(value)
-        Time.parse(value.to_s).getlocal("+09:00").strftime("%-m/%-d %H:%M")
+        Time.parse(value.to_s).getlocal("+09:00").strftime("%H:%M")
       rescue ArgumentError
         value
       end
@@ -545,6 +551,15 @@ __END__
       margin: 0;
       padding: 0;
     }
+    .event-date {
+      color: color-mix(in srgb, CanvasText 62%, transparent);
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin: 1.25rem 0 0.25rem;
+    }
+    .event-list > .event-date:first-child {
+      margin-top: 0;
+    }
     .event-item {
       align-items: center;
       border-bottom: 1px solid var(--pico-muted-border-color);
@@ -612,7 +627,13 @@ __END__
     <p class="muted">No events yet.</p>
   <% else %>
     <ol class="event-list">
+      <% current_date = nil %>
       <% @events.each do |event| %>
+        <% event_date = format_jst_date(event.fetch("detected_at")) %>
+        <% if event_date != current_date %>
+          <% current_date = event_date %>
+          <li class="event-date"><%= event_date %></li>
+        <% end %>
         <li class="event-item">
           <% if event.fetch("icon_url", "").to_s.empty? %>
             <span class="app-icon"></span>
