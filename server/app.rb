@@ -576,7 +576,6 @@ __END__
 
 @@ watch
 <section>
-  <h2>Recent events</h2>
   <table>
     <thead>
       <tr>
