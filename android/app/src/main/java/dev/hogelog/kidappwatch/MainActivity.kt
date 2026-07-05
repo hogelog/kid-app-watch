@@ -54,6 +54,7 @@ private fun SettingsScreen() {
     var settings by remember { mutableStateOf(AppSettings()) }
     var serverUrl by remember { mutableStateOf("") }
     var extraHeaders by remember { mutableStateOf("") }
+    var saveStatus by remember { mutableStateOf("") }
     var testStatus by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
@@ -109,8 +110,8 @@ private fun SettingsScreen() {
             onValueChange = { extraHeaders = it },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
-            label = { Text("Extra headers") },
-            placeholder = { Text("CF-Access-Client-Id: ...\nCF-Access-Client-Secret: ...") },
+            label = { Text("Headers") },
+            placeholder = { Text("Header-Name: value\nAnother-Header: value") },
         )
 
         Row(
@@ -120,11 +121,13 @@ private fun SettingsScreen() {
             Button(
                 onClick = {
                     scope.launch {
+                        saveStatus = "Saving..."
                         repository.saveConnection(
                             serverUrl = serverUrl,
                             extraHeaders = extraHeaders,
                         )
                         LaunchMonitorScheduler.enqueue(context)
+                        saveStatus = "Saved"
                     }
                 },
             ) {
@@ -159,8 +162,11 @@ private fun SettingsScreen() {
                     }
                 },
             ) {
-                Text("Test connection")
+                Text("Test")
             }
+        }
+        if (saveStatus.isNotBlank()) {
+            Text(saveStatus)
         }
         if (testStatus.isNotBlank()) {
             Text(testStatus)
