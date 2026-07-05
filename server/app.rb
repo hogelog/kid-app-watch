@@ -620,7 +620,6 @@ __END__
         <th>Name</th>
         <th>Watch packages</th>
         <th>Last event</th>
-        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -630,11 +629,6 @@ __END__
           <td><%= device.fetch("name") %></td>
           <td><%= device.fetch("watch_package_count") %></td>
           <td><%= device.fetch("last_detected_at") || "-" %></td>
-          <td>
-            <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
-              <button type="submit" class="secondary">Delete</button>
-            </form>
-          </td>
         </tr>
       <% end %>
     </tbody>
