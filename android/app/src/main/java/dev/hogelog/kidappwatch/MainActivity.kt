@@ -30,9 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,7 +56,6 @@ private fun SettingsScreen() {
     var serverUrl by remember { mutableStateOf("") }
     var extraHeaders by remember { mutableStateOf("") }
     var saveStatus by remember { mutableStateOf("") }
-    var testStatus by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
 
     LaunchedEffect(repository) {
@@ -152,42 +149,7 @@ private fun SettingsScreen() {
             ) {
                 Text("Save")
             }
-            Button(
-                onClick = {
-                    scope.launch {
-                        testStatus = "Testing..."
-                        repository.saveConnection(
-                            serverUrl = serverUrl,
-                            extraHeaders = extraHeaders,
-                        )
-
-                        val testSettings = settings.copy(
-                            serverUrl = serverUrl.trim().trimEnd('/'),
-                            extraHeaders = extraHeaders.trim(),
-                        )
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                ApiClient().fetchConfig(testSettings).size
-                            }
-                        }.fold(
-                            onSuccess = { count ->
-                                testStatus = "OK: $count watched apps"
-                                LaunchMonitorScheduler.enqueue(context)
-                            },
-                            onFailure = { error ->
-                                testStatus = "Failed: ${error.message ?: error::class.java.simpleName}"
-                            },
-                        )
-                    }
-                },
-            ) {
-                Text("Test")
-            }
         }
-        if (testStatus.isNotBlank()) {
-            Text(testStatus)
-        }
-
         Spacer(modifier = Modifier.height(12.dp))
         Text("Last sent event", style = MaterialTheme.typography.titleMedium)
         Text(settings.lastEventSummary.ifBlank { "-" })
