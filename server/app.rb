@@ -481,6 +481,9 @@ __END__
   <main class="container">
     <header>
       <h1><a href="/">Kid App Watch</a></h1>
+      <% if request.path_info.start_with?("/admin") %>
+        <span class="nav"><a href="/admin">Admin</a></span>
+      <% end %>
     </header>
     <%= yield %>
     <footer>
