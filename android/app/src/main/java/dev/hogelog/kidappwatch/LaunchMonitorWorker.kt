@@ -19,13 +19,14 @@ class LaunchMonitorWorker(
 
     override suspend fun doWork(): Result {
         val settings = repository.settings.first()
+        val showStatus = inputData.getBoolean(SHOW_STATUS_INPUT_KEY, false)
         if (!settings.monitorEnabled) return Result.success()
         if (settings.serverUrl.isBlank()) {
-            repository.saveCheckStatus("Check skipped: Server URL is empty")
+            if (showStatus) repository.saveCheckStatus("Check skipped: Server URL is empty")
             return Result.success()
         }
         if (!UsageAccessHelper.hasUsageAccess(applicationContext)) {
-            repository.saveCheckStatus("Check skipped: Usage access is not granted")
+            if (showStatus) repository.saveCheckStatus("Check skipped: Usage access is not granted")
             return Result.success()
         }
 
@@ -62,11 +63,11 @@ class LaunchMonitorWorker(
             }
 
             repository.saveLastScanAt(now)
-            repository.saveCheckStatus("Checked ${formatLocalMinute(now)}: $sentCount sent")
+            if (showStatus) repository.saveCheckStatus("Checked ${formatLocalMinute(now)}: $sentCount sent")
         }.fold(
             onSuccess = { Result.success() },
             onFailure = { error ->
-                repository.saveCheckStatus("Check failed: ${error.message ?: error::class.java.simpleName}")
+                if (showStatus) repository.saveCheckStatus("Check failed: ${error.message ?: error::class.java.simpleName}")
                 Result.retry()
             },
         )
@@ -140,7 +141,8 @@ class LaunchMonitorWorker(
                 eventType == UsageEvents.Event.MOVE_TO_BACKGROUND
     }
 
-    private companion object {
-        const val INITIAL_LOOKBACK_MILLIS = 15 * 60 * 1000L
+    companion object {
+        const val SHOW_STATUS_INPUT_KEY = "show_status"
+        private const val INITIAL_LOOKBACK_MILLIS = 15 * 60 * 1000L
     }
 }

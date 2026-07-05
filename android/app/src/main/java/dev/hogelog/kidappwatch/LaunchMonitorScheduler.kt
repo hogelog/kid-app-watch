@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 
 object LaunchMonitorScheduler {
@@ -29,6 +30,7 @@ object LaunchMonitorScheduler {
     fun enqueueCheckNow(context: Context) {
         val request = OneTimeWorkRequestBuilder<LaunchMonitorWorker>()
             .setConstraints(networkConstraints())
+            .setInputData(workDataOf(LaunchMonitorWorker.SHOW_STATUS_INPUT_KEY to true))
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
