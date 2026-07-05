@@ -612,6 +612,35 @@ __END__
 </section>
 
 <section>
+  <h2>Watched apps</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>App</th>
+        <th>Package</th>
+        <th>Cooldown</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @watch_packages.each do |watch_package| %>
+        <tr>
+          <td>
+            <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= watch_package.fetch("app_label") %>
+          </td>
+          <td class="token"><%= watch_package.fetch("package_name") %></td>
+          <td><%= watch_package.fetch("cooldown_seconds") %>s</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+
+
+
+<section>
   <h2>Recent events</h2>
   <table>
     <thead>
@@ -634,35 +663,6 @@ __END__
           </td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
           <td class="optional-mobile"><%= event.fetch("source") %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-</section>
-
-
-
-<section>
-  <h2>Watched apps</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>App</th>
-        <th>Package</th>
-        <th>Cooldown</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @watch_packages.each do |watch_package| %>
-        <tr>
-          <td>
-            <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
-              <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
-            <% end %>
-            <%= watch_package.fetch("app_label") %>
-          </td>
-          <td class="token"><%= watch_package.fetch("package_name") %></td>
-          <td><%= watch_package.fetch("cooldown_seconds") %>s</td>
         </tr>
       <% end %>
     </tbody>
