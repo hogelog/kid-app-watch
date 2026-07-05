@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # Full history so versionCode can count commits monotonically.
+          fetch-depth: 0
 
       - uses: actions/setup-java@v5
         with:
@@ -33,6 +35,9 @@ jobs:
           cache-read-only: true
 
       - name: Build debug APK
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: gradle -p android :app:assembleDebug --configuration-cache
 
       - name: Publish preview release
@@ -46,6 +51,9 @@ jobs:
           TAG="ci-pr-${PR_NUMBER}"
           APK_NAME="kidappwatch-pr-${PR_NUMBER}-${SHORT_SHA}-debug.apk"
           cp android/app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+          META="android/app/build/outputs/apk/debug/output-metadata.json"
+          VERSION_NAME=$(jq -r '.elements[0].versionName' "$META")
+          VERSION_CODE=$(jq -r '.elements[0].versionCode' "$META")
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release delete "$TAG" --yes --cleanup-tag
@@ -53,7 +61,7 @@ jobs:
 
           gh release create "$TAG" \
             --title "Preview build for PR #${PR_NUMBER} (${SHORT_SHA})" \
-            --notes "Automatic debug build of ${HEAD_SHA} for PR #${PR_NUMBER}" \
+            --notes "Automatic debug build of ${HEAD_SHA} for PR #${PR_NUMBER}\n\nVersion: ${VERSION_NAME} (${VERSION_CODE})" \
             --prerelease \
             --target "${HEAD_SHA}" \
             "$APK_NAME"
@@ -77,6 +85,9 @@ jobs:
         run: |
           RELEASE_URL="${SERVER_URL}/${REPO}/releases/tag/${TAG}"
           APK_URL="${SERVER_URL}/${REPO}/releases/download/${TAG}/${APK_NAME}"
+          META="android/app/build/outputs/apk/debug/output-metadata.json"
+          VERSION_NAME=$(jq -r '.elements[0].versionName' "$META")
+          VERSION_CODE=$(jq -r '.elements[0].versionCode' "$META")
           MARKER="<!-- kidappwatch-pr-preview-build -->"
 
           gh api graphql \
@@ -107,6 +118,7 @@ jobs:
           gh pr comment "$PR_NUMBER" --body "${MARKER}
           Debug preview build for \`${HEAD_SHA}\` is ready.
 
+          - Version: \`${VERSION_NAME}\` (versionCode \`${VERSION_CODE}\`)
           - Release: ${RELEASE_URL}
           - APK: [\`${APK_NAME}\`](${APK_URL})
           - Revision: \`${HEAD_SHA}\`"
