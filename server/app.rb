@@ -435,8 +435,8 @@ module KidAppWatch
       html = response.body
       label = html[/<meta\s+property="og:title"\s+content="([^"]+)"/i, 1]
       icon_url = html[/<meta\s+property="og:image"\s+content="([^"]+)"/i, 1]
-      label = CGI.unescapeHTML(label.to_s).sub(/\s+-\s+[^-]+\z/, "").strip
-      icon_url = CGI.unescapeHTML(icon_url.to_s).strip
+      label = CGI.unescapeHTML(label.to_s).sub(/\s+-\s+[^-]+\z/, "").strip.force_encoding(Encoding::UTF_8)
+      icon_url = CGI.unescapeHTML(icon_url.to_s).strip.force_encoding(Encoding::UTF_8)
       { label: label, icon_url: icon_url }
     rescue StandardError => error
       warn "Play Store metadata fetch failed for #{package_name}: #{error.class}: #{error.message}"
