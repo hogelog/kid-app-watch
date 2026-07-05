@@ -747,7 +747,6 @@ __END__
         <th>App</th>
         <th>Duration</th>
         <th class="optional-mobile">Package</th>
-        <th class="optional-mobile">Source</th>
       </tr>
     </thead>
     <tbody>
@@ -763,7 +762,6 @@ __END__
           <% duration = format_duration(event.fetch("duration_seconds", nil)) %>
           <td><%= duration.empty? ? "-" : duration %></td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
-          <td class="optional-mobile"><%= event.fetch("source") %></td>
         </tr>
       <% end %>
     </tbody>
@@ -883,7 +881,6 @@ __END__
         <th>Package</th>
         <th>Label</th>
         <th>Duration</th>
-        <th>Source</th>
       </tr>
     </thead>
     <tbody>
@@ -899,7 +896,6 @@ __END__
           </td>
           <% duration = format_duration(event.fetch("duration_seconds", nil)) %>
           <td><%= duration.empty? ? "-" : duration %></td>
-          <td><%= event.fetch("source") %></td>
         </tr>
       <% end %>
     </tbody>
