@@ -285,6 +285,14 @@ module KidAppWatch
       redirect_back_to_device(device.fetch("id"))
     end
 
+    post "/admin/devices/:id/delete" do
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      halt 404, "Device not found" unless device
+
+      db.execute("DELETE FROM devices WHERE id = ?", device.fetch("id"))
+      redirect "/admin"
+    end
+
     error do
       status 500
       "Internal server error\n"
@@ -596,6 +604,7 @@ __END__
         <th>Name</th>
         <th>Watch packages</th>
         <th>Last event</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -605,6 +614,11 @@ __END__
           <td><%= device.fetch("name") %></td>
           <td><%= device.fetch("watch_package_count") %></td>
           <td><%= device.fetch("last_detected_at") || "-" %></td>
+          <td>
+            <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
+              <button type="submit" class="secondary">Delete</button>
+            </form>
+          </td>
         </tr>
       <% end %>
     </tbody>
@@ -615,6 +629,9 @@ __END__
 <section>
   <h2><%= @device.fetch("name") %></h2>
   <p class="muted">Device ID: <span class="token"><%= @device.fetch("id") %></span></p>
+  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
+    <button type="submit" class="secondary">Delete device</button>
+  </form>
 </section>
 
 <section>
