@@ -580,7 +580,6 @@ __END__
     <thead>
       <tr>
         <th>Detected at</th>
-        <th>Device</th>
         <th>App</th>
         <th class="optional-mobile">Package</th>
       </tr>
@@ -589,7 +588,6 @@ __END__
       <% @events.each do |event| %>
         <tr>
           <td><%= event.fetch("detected_at") %></td>
-          <td><a href="/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
           <td>
             <% unless event.fetch("icon_url", "").to_s.empty? %>
               <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
