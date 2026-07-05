@@ -81,9 +81,11 @@ module KidAppWatch
           ORDER BY d.name COLLATE NOCASE, d.id COLLATE NOCASE
         SQL
         @events = db.execute(<<~SQL)
-          SELECT e.*, d.name AS device_name
+          SELECT e.*, d.name AS device_name, w.icon_url
           FROM app_launch_events e
           JOIN devices d ON d.id = e.device_id
+          LEFT JOIN watch_packages w
+            ON w.device_id = e.device_id AND w.package_name = e.package_name
           ORDER BY e.detected_at DESC, e.id DESC
           LIMIT 100
         SQL
@@ -204,10 +206,12 @@ module KidAppWatch
       SQL
 
       @events = db.execute(<<~SQL, [@device.fetch("id")])
-        SELECT *
-        FROM app_launch_events
-        WHERE device_id = ?
-        ORDER BY detected_at DESC, id DESC
+        SELECT e.*, w.icon_url
+        FROM app_launch_events e
+        LEFT JOIN watch_packages w
+          ON w.device_id = e.device_id AND w.package_name = e.package_name
+        WHERE e.device_id = ?
+        ORDER BY e.detected_at DESC, e.id DESC
         LIMIT 100
       SQL
 
@@ -240,10 +244,12 @@ module KidAppWatch
       SQL
 
       @events = db.execute(<<~SQL, [@device.fetch("id")])
-        SELECT *
-        FROM app_launch_events
-        WHERE device_id = ?
-        ORDER BY detected_at DESC, id DESC
+        SELECT e.*, w.icon_url
+        FROM app_launch_events e
+        LEFT JOIN watch_packages w
+          ON w.device_id = e.device_id AND w.package_name = e.package_name
+        WHERE e.device_id = ?
+        ORDER BY e.detected_at DESC, e.id DESC
         LIMIT 100
       SQL
 
@@ -584,7 +590,12 @@ __END__
         <tr>
           <td><%= event.fetch("detected_at") %></td>
           <td><a href="/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
-          <td><%= event.fetch("app_label") %></td>
+          <td>
+            <% unless event.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= event.fetch("app_label") %>
+          </td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
         </tr>
       <% end %>
@@ -640,7 +651,12 @@ __END__
       <% @events.each do |event| %>
         <tr>
           <td><%= event.fetch("detected_at") %></td>
-          <td><%= event.fetch("app_label") %></td>
+          <td>
+            <% unless event.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= event.fetch("app_label") %>
+          </td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
           <td class="optional-mobile"><%= event.fetch("source") %></td>
         </tr>
@@ -766,7 +782,12 @@ __END__
         <tr>
           <td><%= event.fetch("detected_at") %></td>
           <td class="token"><%= event.fetch("package_name") %></td>
-          <td><%= event.fetch("app_label") %></td>
+          <td>
+            <% unless event.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= event.fetch("app_label") %>
+          </td>
           <td><%= event.fetch("source") %></td>
         </tr>
       <% end %>
