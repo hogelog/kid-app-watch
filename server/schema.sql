@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   ntfy_topic_url TEXT,
+  last_seen_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

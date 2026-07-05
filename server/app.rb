@@ -33,6 +33,14 @@ module KidAppWatch
         Time.now.iso8601
       end
 
+      def format_jst_datetime(value)
+        return "-" if value.to_s.empty?
+
+        Time.parse(value.to_s).getlocal("+09:00").strftime("%-m/%-d %H:%M")
+      rescue ArgumentError
+        value
+      end
+
       def format_jst_date(value)
         Time.parse(value.to_s).getlocal("+09:00").strftime("%-m/%-d")
       rescue ArgumentError
@@ -73,12 +81,16 @@ module KidAppWatch
         id = params.fetch("id").to_s.strip
         halt_json 422, error: "device_id_required" if id.empty?
 
+        seen_at = now_iso
         device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
-        return device if device
+        if device
+          db.execute("UPDATE devices SET last_seen_at = ?, updated_at = ? WHERE id = ?", [seen_at, seen_at, id])
+          return db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
+        end
 
-        db.execute(<<~SQL, [id, id, now_iso, now_iso])
-          INSERT INTO devices (id, name, created_at, updated_at)
-          VALUES (?, ?, ?, ?)
+        db.execute(<<~SQL, [id, id, seen_at, seen_at, seen_at])
+          INSERT INTO devices (id, name, last_seen_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
         SQL
         db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
       rescue SQLite3::ConstraintException
@@ -184,6 +196,18 @@ module KidAppWatch
       Base64.decode64(ICON_PNG_BASE64)
     end
 
+    get "/api/devices/:id/heartbeat" do
+      device = find_or_register_api_device!
+      content_type :json
+      JSON.generate(ok: true, device: { id: device.fetch("id"), last_seen_at: device.fetch("last_seen_at") })
+    end
+
+    post "/api/devices/:id/heartbeat" do
+      device = find_or_register_api_device!
+      content_type :json
+      JSON.generate(ok: true, device: { id: device.fetch("id"), last_seen_at: device.fetch("last_seen_at") })
+    end
+
     get "/api/devices/:id/config" do
       device = find_or_register_api_device!
       packages = db.execute(<<~SQL, [device.fetch("id")])
@@ -238,7 +262,7 @@ module KidAppWatch
     get "/devices/:id" do
       halt 403, "Forbidden\n" unless params[:id] == current_watch_device_id!
 
-      @device = db.get_first_row("SELECT id, name FROM devices WHERE id = ?", [params[:id]])
+      @device = db.get_first_row("SELECT id, name, last_seen_at FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless @device
 
       @watch_packages = db.execute(<<~SQL, [@device.fetch("id")])
@@ -394,6 +418,7 @@ module KidAppWatch
         database.busy_timeout = 5_000
         database.execute("PRAGMA foreign_keys = ON")
         database.execute("PRAGMA journal_mode = WAL")
+        ensure_column(database, "devices", "last_seen_at", "TEXT")
         ensure_column(database, "app_launch_events", "duration_seconds", "INTEGER")
       end
     end
@@ -751,6 +776,7 @@ __END__
         <th>ID</th>
         <th>Name</th>
         <th>Watch packages</th>
+        <th>Last seen</th>
         <th>Last event</th>
       </tr>
     </thead>
@@ -760,7 +786,8 @@ __END__
           <td><a href="/admin/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>"><%= device.fetch("id") %></a></td>
           <td><%= device.fetch("name") %></td>
           <td><%= device.fetch("watch_package_count") %></td>
-          <td><%= device.fetch("last_detected_at") || "-" %></td>
+          <td><%= format_jst_datetime(device.fetch("last_seen_at", nil)) %></td>
+          <td><%= format_jst_datetime(device.fetch("last_detected_at", nil)) %></td>
         </tr>
       <% end %>
     </tbody>
@@ -771,6 +798,7 @@ __END__
 <section>
   <h2><%= @device.fetch("name") %></h2>
   <p class="muted">Device ID: <span class="token"><%= @device.fetch("id") %></span></p>
+  <p class="muted">Last seen: <%= format_jst_datetime(@device.fetch("last_seen_at", nil)) %></p>
   <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/name">
     <label>
       Name
