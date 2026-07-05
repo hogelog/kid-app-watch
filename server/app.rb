@@ -33,6 +33,12 @@ module KidAppWatch
         Time.now.iso8601
       end
 
+      def format_jst_minute(value)
+        Time.parse(value.to_s).getlocal("+09:00").strftime("%-m/%-d %H:%M")
+      rescue ArgumentError
+        value
+      end
+
       def json_body
         JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -534,6 +540,32 @@ __END__
       vertical-align: middle;
       width: 1.75rem;
     }
+    .event-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .event-item {
+      align-items: center;
+      border-bottom: 1px solid var(--pico-muted-border-color);
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: auto 1fr auto;
+      padding: 0.75rem 0;
+    }
+    .event-item .app-icon {
+      height: 2.25rem;
+      margin-right: 0;
+      width: 2.25rem;
+    }
+    .event-app {
+      font-weight: 600;
+    }
+    .event-time {
+      color: color-mix(in srgb, CanvasText 62%, transparent);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
     .pill {
       display: inline-block;
       border: 1px solid var(--pico-muted-border-color);
@@ -576,29 +608,23 @@ __END__
 
 @@ watch
 <section>
-  <table>
-    <thead>
-      <tr>
-        <th>Detected at</th>
-        <th>App</th>
-        <th class="optional-mobile">Package</th>
-      </tr>
-    </thead>
-    <tbody>
+  <% if @events.empty? %>
+    <p class="muted">No events yet.</p>
+  <% else %>
+    <ol class="event-list">
       <% @events.each do |event| %>
-        <tr>
-          <td><%= event.fetch("detected_at") %></td>
-          <td>
-            <% unless event.fetch("icon_url", "").to_s.empty? %>
-              <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
-            <% end %>
-            <%= event.fetch("app_label") %>
-          </td>
-          <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
-        </tr>
+        <li class="event-item">
+          <% if event.fetch("icon_url", "").to_s.empty? %>
+            <span class="app-icon"></span>
+          <% else %>
+            <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
+          <% end %>
+          <span class="event-app"><%= event.fetch("app_label") %></span>
+          <time class="event-time" datetime="<%= event.fetch("detected_at") %>"><%= format_jst_minute(event.fetch("detected_at")) %></time>
+        </li>
       <% end %>
-    </tbody>
-  </table>
+    </ol>
+  <% end %>
 </section>
 
 
