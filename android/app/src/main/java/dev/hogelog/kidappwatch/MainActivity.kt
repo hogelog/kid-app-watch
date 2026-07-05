@@ -111,11 +111,10 @@ private fun AppScreen() {
         } else {
             MainPanel(
                 settings = settings,
-                status = status,
                 onCheckNow = {
                     scope.launch {
                         hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
-                        status = "Checking now..."
+                        repository.saveCheckStatus("Checking now...")
                         LaunchMonitorScheduler.enqueue(context)
                         LaunchMonitorScheduler.enqueueCheckNow(context)
                         Toast.makeText(context, "Check queued", Toast.LENGTH_SHORT).show()
@@ -138,12 +137,11 @@ private fun AppScreen() {
 @Composable
 private fun MainPanel(
     settings: AppSettings,
-    status: String,
     onCheckNow: () -> Unit,
     onOpenWatchPage: () -> Unit,
 ) {
-    if (status.isNotBlank()) {
-        Text(status, style = MaterialTheme.typography.bodySmall)
+    if (settings.lastCheckSummary.isNotBlank()) {
+        Text(settings.lastCheckSummary, style = MaterialTheme.typography.bodySmall)
     }
     Row(
         modifier = Modifier.fillMaxWidth(),

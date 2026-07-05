@@ -22,6 +22,7 @@ data class AppSettings(
     val extraHeaders: String = "",
     val lastEventSummary: String = "",
     val lastEventSummaries: List<String> = emptyList(),
+    val lastCheckSummary: String = "",
     val lastScanAtMillis: Long = 0L,
     val monitorEnabled: Boolean = true,
 )
@@ -37,6 +38,7 @@ class SettingsRepository(private val context: Context) {
         val extraHeaderValue2 = stringPreferencesKey("extra_header_value_2")
         val lastEventSummary = stringPreferencesKey("last_event_summary")
         val lastEventSummaries = stringPreferencesKey("last_event_summaries")
+        val lastCheckSummary = stringPreferencesKey("last_check_summary")
         val lastScanAtMillis = longPreferencesKey("last_scan_at_millis")
         val monitorEnabled = booleanPreferencesKey("monitor_enabled")
     }
@@ -59,6 +61,7 @@ class SettingsRepository(private val context: Context) {
                         .takeIf { it.isNotBlank() }
                         ?.let { listOf(it) }
                         .orEmpty(),
+                lastCheckSummary = preferences[Keys.lastCheckSummary].orEmpty(),
                 lastScanAtMillis = preferences[Keys.lastScanAtMillis] ?: 0L,
                 monitorEnabled = preferences[Keys.monitorEnabled] ?: true,
             )
@@ -72,6 +75,12 @@ class SettingsRepository(private val context: Context) {
             preferences[Keys.serverUrl] = serverUrl.trim().trimEnd('/')
             preferences[Keys.deviceId] = defaultDeviceId()
             preferences[Keys.extraHeaders] = extraHeaders.trim()
+        }
+    }
+
+    suspend fun saveCheckStatus(summary: String) {
+        context.dataStore.edit { preferences ->
+            preferences[Keys.lastCheckSummary] = summary
         }
     }
 

@@ -21,9 +21,11 @@ class LaunchMonitorWorker(
         val settings = repository.settings.first()
         if (!settings.monitorEnabled) return Result.success()
         if (settings.serverUrl.isBlank()) {
+            repository.saveCheckStatus("Check skipped: Server URL is empty")
             return Result.success()
         }
         if (!UsageAccessHelper.hasUsageAccess(applicationContext)) {
+            repository.saveCheckStatus("Check skipped: Usage access is not granted")
             return Result.success()
         }
 
@@ -41,6 +43,7 @@ class LaunchMonitorWorker(
                 .filter { it.isLaunch && it.packageName in watchPackageByName }
                 .distinctBy { it.packageName }
 
+            var sentCount = 0
             for (launch in launches) {
                 val watchPackage = watchPackageByName.getValue(launch.packageName)
                 val durationSeconds = estimateDurationSeconds(launch, usageEvents, now)
@@ -51,6 +54,7 @@ class LaunchMonitorWorker(
                     detectedAt = Instant.ofEpochMilli(launch.timestampMillis),
                     durationSeconds = durationSeconds,
                 )
+                sentCount += 1
                 repository.saveLastEvent(
                     "${watchPackage.appLabel} at ${formatLocalMinute(launch.timestampMillis)}" +
                         (durationSeconds?.let { " (${formatDuration(it)})" } ?: ""),
@@ -58,9 +62,13 @@ class LaunchMonitorWorker(
             }
 
             repository.saveLastScanAt(now)
+            repository.saveCheckStatus("Checked ${formatLocalMinute(now)}: $sentCount sent")
         }.fold(
             onSuccess = { Result.success() },
-            onFailure = { Result.retry() },
+            onFailure = { error ->
+                repository.saveCheckStatus("Check failed: ${error.message ?: error::class.java.simpleName}")
+                Result.retry()
+            },
         )
     }
 
