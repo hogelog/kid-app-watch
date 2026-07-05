@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS watch_packages (
   device_id TEXT NOT NULL,
   package_name TEXT NOT NULL,
   app_label TEXT NOT NULL,
+  icon_url TEXT,
   enabled INTEGER NOT NULL DEFAULT 1,
   cooldown_seconds INTEGER NOT NULL DEFAULT 300,
   created_at TEXT NOT NULL,

@@ -1,4 +1,5 @@
 require "base64"
+require "cgi"
 require "digest"
 require "json"
 require "fileutils"
@@ -144,7 +145,7 @@ module KidAppWatch
     get "/api/devices/:id/config" do
       device = find_or_register_api_device!
       packages = db.execute(<<~SQL, [device.fetch("id")])
-        SELECT package_name, app_label, cooldown_seconds
+        SELECT package_name, app_label, icon_url, cooldown_seconds
         FROM watch_packages
         WHERE device_id = ? AND enabled = 1
         ORDER BY app_label COLLATE NOCASE, package_name COLLATE NOCASE
@@ -196,7 +197,7 @@ module KidAppWatch
       halt 404, "Device not found" unless @device
 
       @watch_packages = db.execute(<<~SQL, [@device.fetch("id")])
-        SELECT package_name, app_label, cooldown_seconds
+        SELECT package_name, app_label, icon_url, cooldown_seconds
         FROM watch_packages
         WHERE device_id = ? AND enabled = 1
         ORDER BY app_label COLLATE NOCASE, package_name COLLATE NOCASE
@@ -254,16 +255,29 @@ module KidAppWatch
       halt 404, "Device not found" unless device
 
       package_name = params.fetch("package_name", "").strip
-      app_label = params.fetch("app_label", package_name).strip
+      app_label = params.fetch("app_label", "").strip
       cooldown_seconds = Integer(params.fetch("cooldown_seconds", "300"))
       halt 422, "Package name is required" if package_name.empty?
 
-      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, bool_param("enabled"), cooldown_seconds, now_iso, now_iso])
+      existing_package = db.get_first_row(<<~SQL, [device.fetch("id"), package_name])
+        SELECT *
+        FROM watch_packages
+        WHERE device_id = ? AND package_name = ?
+      SQL
+      metadata = fetch_play_store_metadata(package_name)
+      app_label = metadata.fetch(:label, "") if app_label.empty?
+      app_label = existing_package.fetch("app_label", "") if app_label.empty? && existing_package
+      app_label = package_name if app_label.empty?
+      icon_url = metadata.fetch(:icon_url, "")
+      icon_url = existing_package.fetch("icon_url", "") if icon_url.empty? && existing_package
+
+      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, icon_url, bool_param("enabled"), cooldown_seconds, now_iso, now_iso])
         INSERT INTO watch_packages
-          (device_id, package_name, app_label, enabled, cooldown_seconds, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (device_id, package_name, app_label, icon_url, enabled, cooldown_seconds, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(device_id, package_name) DO UPDATE SET
           app_label = excluded.app_label,
+          icon_url = excluded.icon_url,
           enabled = excluded.enabled,
           cooldown_seconds = excluded.cooldown_seconds,
           updated_at = excluded.updated_at
@@ -353,6 +367,23 @@ module KidAppWatch
       Time.parse(detected_at) - Time.parse(last_notified) >= cooldown
     rescue ArgumentError
       false
+    end
+
+    def fetch_play_store_metadata(package_name)
+      uri = URI("https://play.google.com/store/apps/details")
+      uri.query = URI.encode_www_form(id: package_name, hl: "ja", gl: "JP")
+      response = Net::HTTP.get_response(uri)
+      return {} unless response.is_a?(Net::HTTPSuccess)
+
+      html = response.body
+      label = html[/<meta\s+property="og:title"\s+content="([^"]+)"/i, 1]
+      icon_url = html[/<meta\s+property="og:image"\s+content="([^"]+)"/i, 1]
+      label = CGI.unescapeHTML(label.to_s).sub(/\s+-\s+[^-]+\z/, "").strip
+      icon_url = CGI.unescapeHTML(icon_url.to_s).strip
+      { label: label, icon_url: icon_url }
+    rescue StandardError => error
+      warn "Play Store metadata fetch failed for #{package_name}: #{error.class}: #{error.message}"
+      {}
     end
 
     def notify_ntfy(device, package_name, app_label, detected_at)
@@ -473,6 +504,13 @@ __END__
       gap: 12px;
       align-items: center;
     }
+    .app-icon {
+      border-radius: 20%;
+      height: 1.75rem;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+      width: 1.75rem;
+    }
     .pill {
       display: inline-block;
       border: 1px solid var(--pico-muted-border-color);
@@ -539,7 +577,6 @@ __END__
         <th>Device</th>
         <th>App</th>
         <th class="optional-mobile">Package</th>
-        <th>Notified</th>
       </tr>
     </thead>
     <tbody>
@@ -549,7 +586,6 @@ __END__
           <td><a href="/devices/<%= Rack::Utils.escape_path(event.fetch("device_id")) %>"><%= event.fetch("device_name") %></a></td>
           <td><%= event.fetch("app_label") %></td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
-          <td><span class="pill"><%= event.fetch("notified").to_i == 1 ? "notified" : "stored" %></span></td>
         </tr>
       <% end %>
     </tbody>
@@ -575,7 +611,12 @@ __END__
     <tbody>
       <% @watch_packages.each do |watch_package| %>
         <tr>
-          <td><%= watch_package.fetch("app_label") %></td>
+          <td>
+            <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= watch_package.fetch("app_label") %>
+          </td>
           <td class="token"><%= watch_package.fetch("package_name") %></td>
           <td><%= watch_package.fetch("cooldown_seconds") %>s</td>
         </tr>
@@ -593,7 +634,6 @@ __END__
         <th>App</th>
         <th class="optional-mobile">Package</th>
         <th class="optional-mobile">Source</th>
-        <th>Notified</th>
       </tr>
     </thead>
     <tbody>
@@ -603,7 +643,6 @@ __END__
           <td><%= event.fetch("app_label") %></td>
           <td class="token optional-mobile"><%= event.fetch("package_name") %></td>
           <td class="optional-mobile"><%= event.fetch("source") %></td>
-          <td><span class="pill"><%= event.fetch("notified").to_i == 1 ? "notified" : "stored" %></span></td>
         </tr>
       <% end %>
     </tbody>
@@ -677,7 +716,12 @@ __END__
       <% @watch_packages.each do |watch_package| %>
         <tr>
           <td class="token"><%= watch_package.fetch("package_name") %></td>
-          <td><%= watch_package.fetch("app_label") %></td>
+          <td>
+            <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
+              <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
+            <% end %>
+            <%= watch_package.fetch("app_label") %>
+          </td>
           <td><%= watch_package.fetch("enabled").to_i == 1 ? "yes" : "no" %></td>
           <td><%= watch_package.fetch("cooldown_seconds") %>s</td>
         </tr>
@@ -715,7 +759,6 @@ __END__
         <th>Package</th>
         <th>Label</th>
         <th>Source</th>
-        <th>Notified</th>
       </tr>
     </thead>
     <tbody>
@@ -725,7 +768,6 @@ __END__
           <td class="token"><%= event.fetch("package_name") %></td>
           <td><%= event.fetch("app_label") %></td>
           <td><%= event.fetch("source") %></td>
-          <td><%= event.fetch("notified").to_i == 1 ? "yes" : "no" %></td>
         </tr>
       <% end %>
     </tbody>
