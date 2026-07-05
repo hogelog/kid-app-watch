@@ -87,12 +87,14 @@ private fun SettingsScreen() {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Button(
-                onClick = {
-                    context.startActivity(UsageAccessHelper.settingsIntent())
-                },
-            ) {
-                Text("Open usage access")
+            if (!hasUsageAccess) {
+                Button(
+                    onClick = {
+                        context.startActivity(UsageAccessHelper.settingsIntent())
+                    },
+                ) {
+                    Text("Open usage access")
+                }
             }
             Button(
                 onClick = {
