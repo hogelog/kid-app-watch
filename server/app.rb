@@ -91,18 +91,6 @@ module KidAppWatch
       end
 
       def load_watch_overview!(device_id)
-        @devices = db.execute(<<~SQL, [device_id])
-          SELECT d.id,
-                 d.name,
-                 COUNT(DISTINCT w.id) AS watch_package_count,
-                 MAX(e.detected_at) AS last_detected_at
-          FROM devices d
-          LEFT JOIN watch_packages w ON w.device_id = d.id AND w.enabled = 1
-          LEFT JOIN app_launch_events e ON e.device_id = d.id
-          WHERE d.id = ?
-          GROUP BY d.id
-          ORDER BY d.name COLLATE NOCASE, d.id COLLATE NOCASE
-        SQL
         @events = db.execute(<<~SQL, [device_id])
           SELECT e.*, d.name AS device_name, w.icon_url
           FROM app_launch_events e
@@ -617,28 +605,6 @@ __END__
 </section>
 
 
-
-<section>
-  <h2>Devices</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Device</th>
-        <th>Watch packages</th>
-        <th>Last event</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @devices.each do |device| %>
-        <tr>
-          <td><a href="/devices/<%= Rack::Utils.escape_path(device.fetch("id")) %>"><%= device.fetch("name") %></a></td>
-          <td><%= device.fetch("watch_package_count") %></td>
-          <td><%= device.fetch("last_detected_at") || "-" %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-</section>
 
 @@ watch_device
 <section>
