@@ -22,7 +22,6 @@ class LaunchMonitorWorker(
             return Result.success()
         }
         if (!UsageAccessHelper.hasUsageAccess(applicationContext)) {
-            repository.saveLastEvent("Usage access is not granted")
             return Result.success()
         }
 
@@ -53,10 +52,7 @@ class LaunchMonitorWorker(
             repository.saveLastScanAt(now)
         }.fold(
             onSuccess = { Result.success() },
-            onFailure = { error ->
-                repository.saveLastEvent(error.message ?: error::class.java.simpleName)
-                Result.retry()
-            },
+            onFailure = { Result.retry() },
         )
     }
 

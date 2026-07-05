@@ -21,6 +21,7 @@ data class AppSettings(
     val deviceId: String = "",
     val extraHeaders: String = "",
     val lastEventSummary: String = "",
+    val lastEventSummaries: List<String> = emptyList(),
     val lastScanAtMillis: Long = 0L,
     val monitorEnabled: Boolean = true,
 )
@@ -35,6 +36,7 @@ class SettingsRepository(private val context: Context) {
         val extraHeaderName2 = stringPreferencesKey("extra_header_name_2")
         val extraHeaderValue2 = stringPreferencesKey("extra_header_value_2")
         val lastEventSummary = stringPreferencesKey("last_event_summary")
+        val lastEventSummaries = stringPreferencesKey("last_event_summaries")
         val lastScanAtMillis = longPreferencesKey("last_scan_at_millis")
         val monitorEnabled = booleanPreferencesKey("monitor_enabled")
     }
@@ -49,6 +51,14 @@ class SettingsRepository(private val context: Context) {
                 deviceId = preferences[Keys.deviceId].orEmpty().ifBlank { defaultDeviceId() },
                 extraHeaders = preferences[Keys.extraHeaders] ?: legacyExtraHeaders(preferences),
                 lastEventSummary = preferences[Keys.lastEventSummary].orEmpty(),
+                lastEventSummaries = preferences[Keys.lastEventSummaries]
+                    ?.lines()
+                    ?.filter { it.isNotBlank() }
+                    ?: preferences[Keys.lastEventSummary]
+                        .orEmpty()
+                        .takeIf { it.isNotBlank() }
+                        ?.let { listOf(it) }
+                        .orEmpty(),
                 lastScanAtMillis = preferences[Keys.lastScanAtMillis] ?: 0L,
                 monitorEnabled = preferences[Keys.monitorEnabled] ?: true,
             )
@@ -67,7 +77,15 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveLastEvent(summary: String) {
         context.dataStore.edit { preferences ->
+            val recent = preferences[Keys.lastEventSummaries]
+                ?.lines()
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
             preferences[Keys.lastEventSummary] = summary
+            preferences[Keys.lastEventSummaries] = (listOf(summary) + recent)
+                .distinct()
+                .take(20)
+                .joinToString("\n")
         }
     }
 

@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    SettingsScreen()
+                    AppScreen()
                 }
             }
         }
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun SettingsScreen() {
+private fun AppScreen() {
     val context = LocalContext.current
     val repository = remember { SettingsRepository(context) }
     val scope = rememberCoroutineScope()
@@ -57,8 +57,9 @@ private fun SettingsScreen() {
     var settings by remember { mutableStateOf(AppSettings()) }
     var serverUrl by remember { mutableStateOf("") }
     var extraHeaders by remember { mutableStateOf("") }
-    var saveStatus by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessHelper.hasUsageAccess(context)) }
+    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(repository) {
         repository.settings.collect { current ->
@@ -76,86 +77,53 @@ private fun SettingsScreen() {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Kid App Watch", style = MaterialTheme.typography.headlineMedium)
-        Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
-        if (saveStatus.isNotBlank()) {
-            Text(saveStatus, style = MaterialTheme.typography.bodySmall)
-        }
-
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!hasUsageAccess) {
-                Button(
-                    onClick = {
-                        context.startActivity(UsageAccessHelper.settingsIntent())
-                    },
-                ) {
-                    Text("Open usage access")
-                }
+            Text("Kid App Watch", style = MaterialTheme.typography.headlineMedium)
+            Button(onClick = { showSettings = !showSettings }) {
+                Text(if (showSettings) "Back" else "Settings")
             }
-            Button(
-                onClick = {
+        }
+
+        if (showSettings) {
+            SettingsPanel(
+                settings = settings,
+                serverUrl = serverUrl,
+                onServerUrlChange = { serverUrl = it },
+                extraHeaders = extraHeaders,
+                onExtraHeadersChange = { extraHeaders = it },
+                hasUsageAccess = hasUsageAccess,
+                status = status,
+                onOpenUsageAccess = { context.startActivity(UsageAccessHelper.settingsIntent()) },
+                onSave = {
+                    scope.launch {
+                        status = "Saving..."
+                        repository.saveConnection(serverUrl = serverUrl, extraHeaders = extraHeaders)
+                        LaunchMonitorScheduler.enqueue(context)
+                        status = "Saved"
+                        Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
+                    }
+                },
+            )
+        } else {
+            MainPanel(
+                settings = settings,
+                status = status,
+                hasUsageAccess = hasUsageAccess,
+                onCheckNow = {
                     scope.launch {
                         hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
-                        saveStatus = "Checking now..."
-                        repository.saveConnection(
-                            serverUrl = serverUrl,
-                            extraHeaders = extraHeaders,
-                        )
+                        status = "Checking now..."
                         LaunchMonitorScheduler.enqueue(context)
                         LaunchMonitorScheduler.enqueueCheckNow(context)
                         Toast.makeText(context, "Check queued", Toast.LENGTH_SHORT).show()
                     }
                 },
-            ) {
-                Text("Check Now")
-            }
-        }
-
-        OutlinedTextField(
-            value = serverUrl,
-            onValueChange = { serverUrl = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Server URL") },
-            placeholder = { Text("https://example.com") },
-        )
-        Text("Device ID: ${settings.deviceId}", style = MaterialTheme.typography.bodySmall)
-        OutlinedTextField(
-            value = extraHeaders,
-            onValueChange = { extraHeaders = it },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            label = { Text("Headers") },
-            placeholder = { Text("Header-Name: value\nAnother-Header: value") },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        saveStatus = "Saving..."
-                        repository.saveConnection(
-                            serverUrl = serverUrl,
-                            extraHeaders = extraHeaders,
-                        )
-                        LaunchMonitorScheduler.enqueue(context)
-                        saveStatus = "Saved"
-                        Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
-                    }
-                },
-            ) {
-                Text("Save")
-            }
-            Button(
-                onClick = {
-                    val baseUrl = serverUrl.trim().trimEnd('/')
+                onOpenWatchPage = {
+                    val baseUrl = settings.serverUrl.trim().trimEnd('/')
                     if (baseUrl.isBlank()) {
                         Toast.makeText(context, "Server URL is empty", Toast.LENGTH_SHORT).show()
                     } else {
@@ -163,12 +131,85 @@ private fun SettingsScreen() {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 },
-            ) {
-                Text("Open watch page")
-            }
+            )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text("Last sent event", style = MaterialTheme.typography.titleMedium)
-        Text(settings.lastEventSummary.ifBlank { "-" })
+    }
+}
+
+@Composable
+private fun MainPanel(
+    settings: AppSettings,
+    status: String,
+    hasUsageAccess: Boolean,
+    onCheckNow: () -> Unit,
+    onOpenWatchPage: () -> Unit,
+) {
+    Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
+    if (status.isNotBlank()) {
+        Text(status, style = MaterialTheme.typography.bodySmall)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Button(onClick = onCheckNow) {
+            Text("Check Now")
+        }
+        Button(onClick = onOpenWatchPage) {
+            Text("Open watch page")
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    Text("Sent events", style = MaterialTheme.typography.titleMedium)
+    if (settings.lastEventSummaries.isEmpty()) {
+        Text("-")
+    } else {
+        settings.lastEventSummaries.forEach { summary ->
+            Text(summary)
+        }
+    }
+}
+
+@Composable
+private fun SettingsPanel(
+    settings: AppSettings,
+    serverUrl: String,
+    onServerUrlChange: (String) -> Unit,
+    extraHeaders: String,
+    onExtraHeadersChange: (String) -> Unit,
+    hasUsageAccess: Boolean,
+    status: String,
+    onOpenUsageAccess: () -> Unit,
+    onSave: () -> Unit,
+) {
+    Text("Settings", style = MaterialTheme.typography.titleMedium)
+    Text("Usage access: ${if (hasUsageAccess) "granted" else "not granted"}")
+    if (!hasUsageAccess) {
+        Button(onClick = onOpenUsageAccess) {
+            Text("Open usage access")
+        }
+    }
+    OutlinedTextField(
+        value = serverUrl,
+        onValueChange = onServerUrlChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text("Server URL") },
+        placeholder = { Text("https://example.com") },
+    )
+    Text("Device ID: ${settings.deviceId}", style = MaterialTheme.typography.bodySmall)
+    OutlinedTextField(
+        value = extraHeaders,
+        onValueChange = onExtraHeadersChange,
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 3,
+        label = { Text("Headers") },
+        placeholder = { Text("Header-Name: value\nAnother-Header: value") },
+    )
+    Button(onClick = onSave) {
+        Text("Save")
+    }
+    if (status.isNotBlank()) {
+        Text(status, style = MaterialTheme.typography.bodySmall)
     }
 }
