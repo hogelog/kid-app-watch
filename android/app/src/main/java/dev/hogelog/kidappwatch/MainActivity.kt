@@ -93,11 +93,20 @@ private fun SettingsScreen() {
             }
             Button(
                 onClick = {
-                    hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
-                    Toast.makeText(context, "Refreshed", Toast.LENGTH_SHORT).show()
+                    scope.launch {
+                        hasUsageAccess = UsageAccessHelper.hasUsageAccess(context)
+                        saveStatus = "Checking now..."
+                        repository.saveConnection(
+                            serverUrl = serverUrl,
+                            extraHeaders = extraHeaders,
+                        )
+                        LaunchMonitorScheduler.enqueue(context)
+                        LaunchMonitorScheduler.enqueueCheckNow(context)
+                        Toast.makeText(context, "Check queued", Toast.LENGTH_SHORT).show()
+                    }
                 },
             ) {
-                Text("Refresh")
+                Text("Check Now")
             }
         }
 
