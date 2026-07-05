@@ -45,6 +45,19 @@ module KidAppWatch
         value
       end
 
+      def format_duration(seconds)
+        seconds = seconds.to_i
+        return "" if seconds <= 0
+
+        minutes = (seconds / 60.0).round
+        return "<1 min" if minutes <= 0
+        return "#{minutes} min" if minutes < 60
+
+        hours = minutes / 60
+        remaining_minutes = minutes % 60
+        remaining_minutes.zero? ? "#{hours} h" : "#{hours} h #{remaining_minutes} min"
+      end
+
       def json_body
         JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -195,6 +208,7 @@ module KidAppWatch
       app_label = payload.fetch("app_label", package_name).to_s.strip
       detected_at = payload.fetch("detected_at", now_iso).to_s
       source = payload.fetch("source", "unknown").to_s.strip
+      duration_seconds = payload["duration_seconds"]&.to_i
 
       halt_json 422, error: "package_name_required" if package_name.empty?
       halt_json 422, error: "source_required" if source.empty?
@@ -206,10 +220,10 @@ module KidAppWatch
       SQL
 
       notified = should_notify?(device, package_name, package_config, detected_at)
-      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, detected_at, source, notified ? 1 : 0, now_iso])
+      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, detected_at, source, duration_seconds, notified ? 1 : 0, now_iso])
         INSERT INTO app_launch_events
-          (device_id, package_name, app_label, detected_at, source, notified, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (device_id, package_name, app_label, detected_at, source, duration_seconds, notified, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       SQL
 
       notify_ntfy(device, package_name, app_label, detected_at) if notified
@@ -380,7 +394,15 @@ module KidAppWatch
         database.busy_timeout = 5_000
         database.execute("PRAGMA foreign_keys = ON")
         database.execute("PRAGMA journal_mode = WAL")
+        ensure_column(database, "app_launch_events", "duration_seconds", "INTEGER")
       end
+    end
+
+    def self.ensure_column(database, table, column, definition)
+      columns = database.execute("PRAGMA table_info(#{table})").map { |row| row.fetch("name") }
+      return if columns.empty? || columns.include?(column)
+
+      database.execute("ALTER TABLE #{table} ADD COLUMN #{column} #{definition}")
     end
 
     def should_notify?(device, package_name, package_config, detected_at)
@@ -640,7 +662,13 @@ __END__
           <% else %>
             <img class="app-icon" src="<%= event.fetch("icon_url") %>" alt="">
           <% end %>
-          <span class="event-app"><%= event.fetch("app_label") %></span>
+          <span class="event-app">
+            <%= event.fetch("app_label") %>
+            <% duration = format_duration(event.fetch("duration_seconds", nil)) %>
+            <% unless duration.empty? %>
+              <small class="muted"> · <%= duration %></small>
+            <% end %>
+          </span>
           <time class="event-time" datetime="<%= event.fetch("detected_at") %>"><%= format_jst_minute(event.fetch("detected_at")) %></time>
         </li>
       <% end %>

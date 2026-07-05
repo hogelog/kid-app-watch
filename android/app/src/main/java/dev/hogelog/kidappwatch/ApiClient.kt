@@ -40,12 +40,18 @@ class ApiClient(
         packageName: String,
         appLabel: String,
         detectedAt: Instant,
+        durationSeconds: Long?,
     ) {
         val body = JSONObject()
             .put("package_name", packageName)
             .put("app_label", appLabel)
             .put("detected_at", DateTimeFormatter.ISO_INSTANT.format(detectedAt))
             .put("source", "usage_stats")
+            .apply {
+                if (durationSeconds != null && durationSeconds > 0) {
+                    put("duration_seconds", durationSeconds)
+                }
+            }
             .toString()
             .toRequestBody(jsonMediaType)
 

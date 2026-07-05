@@ -34,19 +34,25 @@ class LaunchMonitorWorker(
                 else -> now - INITIAL_LOOKBACK_MILLIS
             }
 
-            val launches = readLaunchEvents(scanStart, now)
-                .filter { it.packageName in watchPackageByName }
+            val usageEvents = readUsageEvents(scanStart, now)
+            val launches = usageEvents
+                .filter { it.isLaunch && it.packageName in watchPackageByName }
                 .distinctBy { it.packageName }
 
             for (launch in launches) {
                 val watchPackage = watchPackageByName.getValue(launch.packageName)
+                val durationSeconds = estimateDurationSeconds(launch, usageEvents, now)
                 apiClient.postAppLaunchEvent(
                     settings = settings,
                     packageName = launch.packageName,
                     appLabel = watchPackage.appLabel,
                     detectedAt = Instant.ofEpochMilli(launch.timestampMillis),
+                    durationSeconds = durationSeconds,
                 )
-                repository.saveLastEvent("${watchPackage.appLabel} at ${Instant.ofEpochMilli(launch.timestampMillis)}")
+                repository.saveLastEvent(
+                    "${watchPackage.appLabel} at ${Instant.ofEpochMilli(launch.timestampMillis)}" +
+                        (durationSeconds?.let { " (${formatDuration(it)})" } ?: ""),
+                )
             }
 
             repository.saveLastScanAt(now)
@@ -56,29 +62,68 @@ class LaunchMonitorWorker(
         )
     }
 
-    private fun readLaunchEvents(startMillis: Long, endMillis: Long): List<LaunchEvent> {
+    private fun readUsageEvents(startMillis: Long, endMillis: Long): List<UsageEvent> {
         val usageStatsManager = applicationContext.getSystemService(UsageStatsManager::class.java)
         val events = usageStatsManager.queryEvents(startMillis, endMillis)
         val event = UsageEvents.Event()
-        val launches = mutableListOf<LaunchEvent>()
+        val usageEvents = mutableListOf<UsageEvent>()
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             if (
                 event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
-                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
+                event.eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
+                event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND
             ) {
-                launches += LaunchEvent(event.packageName, event.timeStamp)
+                usageEvents += UsageEvent(event.packageName, event.timeStamp, event.eventType)
             }
         }
 
-        return launches.sortedByDescending { it.timestampMillis }
+        return usageEvents.sortedByDescending { it.timestampMillis }
     }
 
-    private data class LaunchEvent(
+    private fun estimateDurationSeconds(
+        launch: UsageEvent,
+        usageEvents: List<UsageEvent>,
+        scanEndMillis: Long,
+    ): Long? {
+        val backgroundAt = usageEvents
+            .asSequence()
+            .filter { event ->
+                event.packageName == launch.packageName &&
+                    event.timestampMillis > launch.timestampMillis &&
+                    event.isBackground
+            }
+            .minOfOrNull { it.timestampMillis }
+            ?: scanEndMillis
+
+        return ((backgroundAt - launch.timestampMillis) / 1000L).takeIf { it > 0 }
+    }
+
+    private fun formatDuration(seconds: Long): String {
+        val minutes = Math.round(seconds / 60.0)
+        if (minutes <= 0) return "<1 min"
+        if (minutes < 60) return "$minutes min"
+
+        val hours = minutes / 60
+        val remainingMinutes = minutes % 60
+        return if (remainingMinutes == 0L) "$hours h" else "$hours h $remainingMinutes min"
+    }
+
+    private data class UsageEvent(
         val packageName: String,
         val timestampMillis: Long,
-    )
+        val eventType: Int,
+    ) {
+        val isLaunch: Boolean
+            get() = eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
+                eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+
+        val isBackground: Boolean
+            get() = eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
+                eventType == UsageEvents.Event.MOVE_TO_BACKGROUND
+    }
 
     private companion object {
         const val INITIAL_LOOKBACK_MILLIS = 15 * 60 * 1000L
