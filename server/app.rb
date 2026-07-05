@@ -83,7 +83,10 @@ module KidAppWatch
           )
         end
 
-        halt 401, "Open this page from the Android app first.\n" if device_id.empty?
+        if device_id.empty?
+          status 401
+          return nil
+        end
         device_id
       end
 
@@ -114,7 +117,10 @@ module KidAppWatch
     end
 
     get "/" do
-      load_watch_overview!(current_watch_device_id!)
+      device_id = current_watch_device_id!
+      return erb :login_required unless device_id
+
+      load_watch_overview!(device_id)
       erb :watch
     end
 
@@ -573,6 +579,12 @@ __END__
   </script>
 </body>
 </html>
+
+@@ login_required
+<section>
+  <h2>Device login required</h2>
+  <p>Open this page from the Android app first.</p>
+</section>
 
 @@ watch
 <section>
