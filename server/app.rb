@@ -272,6 +272,22 @@ module KidAppWatch
       redirect_back_to_device(device.fetch("id"))
     end
 
+    post "/admin/devices/:id/name" do
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      halt 404, "Device not found" unless device
+
+      name = params.fetch("name", "").strip
+      halt 422, "Name is required" if name.empty?
+
+      db.execute(<<~SQL, [name, now_iso, device.fetch("id")])
+        UPDATE devices
+        SET name = ?, updated_at = ?
+        WHERE id = ?
+      SQL
+
+      redirect_back_to_device(device.fetch("id"))
+    end
+
     post "/admin/devices/:id/ntfy" do
       device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
       halt 404, "Device not found" unless device
@@ -629,6 +645,13 @@ __END__
 <section>
   <h2><%= @device.fetch("name") %></h2>
   <p class="muted">Device ID: <span class="token"><%= @device.fetch("id") %></span></p>
+  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/name">
+    <label>
+      Name
+      <input name="name" value="<%= @device.fetch("name") %>" required>
+    </label>
+    <button type="submit">Save name</button>
+  </form>
   <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
     <button type="submit" class="secondary">Delete device</button>
   </form>
