@@ -7,6 +7,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class LaunchMonitorWorker(
     appContext: Context,
@@ -50,7 +52,7 @@ class LaunchMonitorWorker(
                     durationSeconds = durationSeconds,
                 )
                 repository.saveLastEvent(
-                    "${watchPackage.appLabel} at ${Instant.ofEpochMilli(launch.timestampMillis)}" +
+                    "${watchPackage.appLabel} at ${formatLocalMinute(launch.timestampMillis)}" +
                         (durationSeconds?.let { " (${formatDuration(it)})" } ?: ""),
                 )
             }
@@ -100,6 +102,11 @@ class LaunchMonitorWorker(
 
         return ((backgroundAt - launch.timestampMillis) / 1000L).takeIf { it > 0 }
     }
+
+    private fun formatLocalMinute(timestampMillis: Long): String = DateTimeFormatter
+        .ofPattern("M/d HH:mm")
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.ofEpochMilli(timestampMillis))
 
     private fun formatDuration(seconds: Long): String {
         val minutes = Math.round(seconds / 60.0)
