@@ -13,14 +13,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
-import java.security.MessageDigest
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
 data class AppSettings(
     val serverUrl: String = "",
     val deviceId: String = "",
-    val apiToken: String = "",
     val extraHeaders: String = "",
     val lastEventSummary: String = "",
     val lastScanAtMillis: Long = 0L,
@@ -31,7 +29,6 @@ class SettingsRepository(private val context: Context) {
     private object Keys {
         val serverUrl = stringPreferencesKey("server_url")
         val deviceId = stringPreferencesKey("device_id")
-        val apiToken = stringPreferencesKey("api_token")
         val extraHeaders = stringPreferencesKey("extra_headers")
         val extraHeaderName1 = stringPreferencesKey("extra_header_name_1")
         val extraHeaderValue1 = stringPreferencesKey("extra_header_value_1")
@@ -50,7 +47,6 @@ class SettingsRepository(private val context: Context) {
             AppSettings(
                 serverUrl = preferences[Keys.serverUrl].orEmpty(),
                 deviceId = preferences[Keys.deviceId].orEmpty().ifBlank { defaultDeviceId() },
-                apiToken = preferences[Keys.apiToken].orEmpty().ifBlank { defaultApiToken() },
                 extraHeaders = preferences[Keys.extraHeaders] ?: legacyExtraHeaders(preferences),
                 lastEventSummary = preferences[Keys.lastEventSummary].orEmpty(),
                 lastScanAtMillis = preferences[Keys.lastScanAtMillis] ?: 0L,
@@ -65,7 +61,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[Keys.serverUrl] = serverUrl.trim().trimEnd('/')
             preferences[Keys.deviceId] = defaultDeviceId()
-            preferences[Keys.apiToken] = defaultApiToken()
             preferences[Keys.extraHeaders] = extraHeaders.trim()
         }
     }
@@ -87,13 +82,6 @@ class SettingsRepository(private val context: Context) {
             ?.takeIf { it.isNotBlank() }
             ?: "unknown"
         return "android-$androidId"
-    }
-
-    private fun defaultApiToken(): String {
-        val input = "${defaultDeviceId()}:${context.packageName}:kid-app-watch"
-        return MessageDigest.getInstance("SHA-256")
-            .digest(input.toByteArray())
-            .joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private fun legacyExtraHeaders(preferences: Preferences): String = listOf(

@@ -3,7 +3,6 @@ require "digest"
 require "json"
 require "fileutils"
 require "net/http"
-require "securerandom"
 require "sinatra/base"
 require "sqlite3"
 require "time"
@@ -44,44 +43,20 @@ module KidAppWatch
         halt status, JSON.generate(payload)
       end
 
-      def bearer_token
-        authorization = request.env["HTTP_AUTHORIZATION"].to_s
-        match = authorization.match(/\ABearer\s+(.+)\z/)
-        halt_json 401, error: "unauthorized" unless match
-
-        match[1]
-      end
-
-      def require_api_device!
-        device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
-        halt_json 404, error: "device_not_found" unless device
-
-        token = bearer_token
-        halt_json 401, error: "unauthorized" unless Rack::Utils.secure_compare(token, device.fetch("token"))
-
-        device
-      end
-
-      def require_or_register_api_device!
-        token = bearer_token
-        halt_json 401, error: "unauthorized" if token.empty?
-
-        device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
-        if device
-          halt_json 401, error: "unauthorized" unless Rack::Utils.secure_compare(token, device.fetch("token"))
-          return device
-        end
-
+      def find_or_register_api_device!
         id = params.fetch("id").to_s.strip
         halt_json 422, error: "device_id_required" if id.empty?
 
-        db.execute(<<~SQL, [id, id, token, now_iso, now_iso])
-          INSERT INTO devices (id, name, token, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?)
+        device = db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
+        return device if device
+
+        db.execute(<<~SQL, [id, id, now_iso, now_iso])
+          INSERT INTO devices (id, name, created_at, updated_at)
+          VALUES (?, ?, ?, ?)
         SQL
         db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
       rescue SQLite3::ConstraintException
-        require_api_device!
+        db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
       end
 
       def bool_param(name)
@@ -167,7 +142,7 @@ module KidAppWatch
     end
 
     get "/api/devices/:id/config" do
-      device = require_or_register_api_device!
+      device = find_or_register_api_device!
       packages = db.execute(<<~SQL, device.fetch("id"))
         SELECT package_name, app_label, cooldown_seconds
         FROM watch_packages
@@ -183,7 +158,7 @@ module KidAppWatch
     end
 
     post "/api/devices/:id/app_launch_events" do
-      device = require_or_register_api_device!
+      device = find_or_register_api_device!
       payload = json_body
 
       package_name = payload.fetch("package_name", "").to_s.strip
@@ -255,15 +230,12 @@ module KidAppWatch
     post "/admin/devices" do
       id = params.fetch("id", "").strip
       name = params.fetch("name", "").strip
-      token = params.fetch("token", "").strip
-
       halt 422, "Device ID is required" if id.empty?
       halt 422, "Name is required" if name.empty?
-      token = SecureRandom.hex(24) if token.empty?
 
-      db.execute(<<~SQL, id, name, token, now_iso, now_iso)
-        INSERT INTO devices (id, name, token, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+      db.execute(<<~SQL, id, name, now_iso, now_iso)
+        INSERT INTO devices (id, name, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
       SQL
       redirect_back_to_device(id)
     rescue SQLite3::ConstraintException
@@ -341,7 +313,13 @@ module KidAppWatch
       FileUtils.mkdir_p(File.dirname(DB_PATH))
       db = open_database
       db.execute_batch(File.read(SCHEMA_PATH))
+      migrate_database!(db)
       db.close
+    end
+
+    def self.migrate_database!(db)
+      columns = db.table_info("devices").map { |column| column.fetch("name") }
+      db.execute("ALTER TABLE devices DROP COLUMN token") if columns.include?("token")
     end
 
     def self.open_database
@@ -662,10 +640,6 @@ __END__
       Name
       <input name="name" placeholder="Child Pixel" required>
     </label>
-    <label>
-      API token
-      <input name="token" placeholder="Leave empty to generate">
-    </label>
     <button type="submit">Create</button>
   </form>
 </section>
@@ -674,7 +648,6 @@ __END__
 <section>
   <h2><%= @device.fetch("name") %></h2>
   <p class="muted">Device ID: <span class="token"><%= @device.fetch("id") %></span></p>
-  <p class="muted">API token: <span class="token"><%= @device.fetch("token") %></span></p>
 </section>
 
 <section>

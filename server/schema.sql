@@ -4,7 +4,6 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  token TEXT NOT NULL,
   ntfy_topic_url TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

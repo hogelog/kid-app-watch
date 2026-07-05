@@ -74,7 +74,6 @@ class ApiClient(
     }
 
     private fun Request.Builder.withAuthHeaders(settings: AppSettings): Request.Builder {
-        header("Authorization", "Bearer ${settings.apiToken}")
         for ((name, value) in parseExtraHeaders(settings.extraHeaders)) {
             header(name, value)
         }

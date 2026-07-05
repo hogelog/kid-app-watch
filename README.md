@@ -34,7 +34,7 @@ CF-Access-Client-Id: <client-id>
 CF-Access-Client-Secret: <client-secret>
 ```
 
-The app generates its device ID and app-level bearer token automatically.
+The app generates its device ID automatically. API endpoints rely on the external gateway for authentication.
 
 ## Setup Flow
 
