@@ -313,13 +313,7 @@ module KidAppWatch
       FileUtils.mkdir_p(File.dirname(DB_PATH))
       db = open_database
       db.execute_batch(File.read(SCHEMA_PATH))
-      migrate_database!(db)
       db.close
-    end
-
-    def self.migrate_database!(db)
-      columns = db.table_info("devices").map { |column| column.fetch("name") }
-      db.execute("ALTER TABLE devices DROP COLUMN token") if columns.include?("token")
     end
 
     def self.open_database
