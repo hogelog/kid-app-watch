@@ -47,16 +47,16 @@ module KidAppWatch
         id = params.fetch("id").to_s.strip
         halt_json 422, error: "device_id_required" if id.empty?
 
-        device = db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
+        device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
         return device if device
 
         db.execute(<<~SQL, [id, id, now_iso, now_iso])
           INSERT INTO devices (id, name, created_at, updated_at)
           VALUES (?, ?, ?, ?)
         SQL
-        db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
+        db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
       rescue SQLite3::ConstraintException
-        db.get_first_row("SELECT * FROM devices WHERE id = ?", id)
+        db.get_first_row("SELECT * FROM devices WHERE id = ?", [id])
       end
 
       def bool_param(name)
@@ -143,7 +143,7 @@ module KidAppWatch
 
     get "/api/devices/:id/config" do
       device = find_or_register_api_device!
-      packages = db.execute(<<~SQL, device.fetch("id"))
+      packages = db.execute(<<~SQL, [device.fetch("id")])
         SELECT package_name, app_label, cooldown_seconds
         FROM watch_packages
         WHERE device_id = ? AND enabled = 1
@@ -169,14 +169,14 @@ module KidAppWatch
       halt_json 422, error: "package_name_required" if package_name.empty?
       halt_json 422, error: "source_required" if source.empty?
 
-      package_config = db.get_first_row(<<~SQL, device.fetch("id"), package_name)
+      package_config = db.get_first_row(<<~SQL, [device.fetch("id"), package_name])
         SELECT *
         FROM watch_packages
         WHERE device_id = ? AND package_name = ?
       SQL
 
       notified = should_notify?(device, package_name, package_config, detected_at)
-      db.execute(<<~SQL, device.fetch("id"), package_name, app_label, detected_at, source, notified ? 1 : 0, now_iso)
+      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, detected_at, source, notified ? 1 : 0, now_iso])
         INSERT INTO app_launch_events
           (device_id, package_name, app_label, detected_at, source, notified, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -192,17 +192,17 @@ module KidAppWatch
     end
 
     get "/devices/:id" do
-      @device = db.get_first_row("SELECT id, name FROM devices WHERE id = ?", params[:id])
+      @device = db.get_first_row("SELECT id, name FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless @device
 
-      @watch_packages = db.execute(<<~SQL, @device.fetch("id"))
+      @watch_packages = db.execute(<<~SQL, [@device.fetch("id")])
         SELECT package_name, app_label, cooldown_seconds
         FROM watch_packages
         WHERE device_id = ? AND enabled = 1
         ORDER BY app_label COLLATE NOCASE, package_name COLLATE NOCASE
       SQL
 
-      @events = db.execute(<<~SQL, @device.fetch("id"))
+      @events = db.execute(<<~SQL, [@device.fetch("id")])
         SELECT *
         FROM app_launch_events
         WHERE device_id = ?
@@ -228,17 +228,17 @@ module KidAppWatch
     end
 
     get "/admin/devices/:id" do
-      @device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      @device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless @device
 
-      @watch_packages = db.execute(<<~SQL, @device.fetch("id"))
+      @watch_packages = db.execute(<<~SQL, [@device.fetch("id")])
         SELECT *
         FROM watch_packages
         WHERE device_id = ?
         ORDER BY enabled DESC, app_label COLLATE NOCASE, package_name COLLATE NOCASE
       SQL
 
-      @events = db.execute(<<~SQL, @device.fetch("id"))
+      @events = db.execute(<<~SQL, [@device.fetch("id")])
         SELECT *
         FROM app_launch_events
         WHERE device_id = ?
@@ -250,7 +250,7 @@ module KidAppWatch
     end
 
     post "/admin/devices/:id/watch_packages" do
-      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless device
 
       package_name = params.fetch("package_name", "").strip
@@ -258,7 +258,7 @@ module KidAppWatch
       cooldown_seconds = Integer(params.fetch("cooldown_seconds", "300"))
       halt 422, "Package name is required" if package_name.empty?
 
-      db.execute(<<~SQL, device.fetch("id"), package_name, app_label, bool_param("enabled"), cooldown_seconds, now_iso, now_iso)
+      db.execute(<<~SQL, [device.fetch("id"), package_name, app_label, bool_param("enabled"), cooldown_seconds, now_iso, now_iso])
         INSERT INTO watch_packages
           (device_id, package_name, app_label, enabled, cooldown_seconds, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -273,7 +273,7 @@ module KidAppWatch
     end
 
     post "/admin/devices/:id/name" do
-      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless device
 
       name = params.fetch("name", "").strip
@@ -289,10 +289,10 @@ module KidAppWatch
     end
 
     post "/admin/devices/:id/ntfy" do
-      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless device
 
-      db.execute(<<~SQL, params.fetch("ntfy_topic_url", "").strip, now_iso, device.fetch("id"))
+      db.execute(<<~SQL, [params.fetch("ntfy_topic_url", "").strip, now_iso, device.fetch("id")])
         UPDATE devices
         SET ntfy_topic_url = ?, updated_at = ?
         WHERE id = ?
@@ -302,10 +302,10 @@ module KidAppWatch
     end
 
     post "/admin/devices/:id/delete" do
-      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", params[:id])
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless device
 
-      db.execute("DELETE FROM devices WHERE id = ?", device.fetch("id"))
+      db.execute("DELETE FROM devices WHERE id = ?", [device.fetch("id")])
       redirect "/admin"
     end
 
@@ -341,7 +341,7 @@ module KidAppWatch
       cooldown = package_config ? package_config.fetch("cooldown_seconds").to_i : 300
       return true if cooldown <= 0
 
-      last_notified = db.get_first_value(<<~SQL, device.fetch("id"), package_name)
+      last_notified = db.get_first_value(<<~SQL, [device.fetch("id"), package_name])
         SELECT detected_at
         FROM app_launch_events
         WHERE device_id = ? AND package_name = ? AND notified = 1
