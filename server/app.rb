@@ -672,6 +672,26 @@ __END__
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
+    .package-list {
+      display: grid;
+      gap: 1rem;
+    }
+    .package-card {
+      border-bottom: 1px solid var(--pico-muted-border-color);
+      padding-bottom: 1rem;
+    }
+    .package-card header {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .package-card .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
     .pill {
       display: inline-block;
       border: 1px solid var(--pico-muted-border-color);
@@ -869,43 +889,43 @@ __END__
 
 <section>
   <h2>Watch packages</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Package</th>
-        <th>Label</th>
-        <th>Enabled</th>
-        <th>Cooldown</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @watch_packages.each do |watch_package| %>
-        <% package_path = Rack::Utils.escape_path(watch_package.fetch("package_name")) %>
-        <% edit_form_id = "edit-watch-package-#{watch_package.fetch("id")}" %>
-        <tr>
-          <td class="token"><%= watch_package.fetch("package_name") %></td>
-          <td>
-            <form id="<%= edit_form_id %>" method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>"></form>
+  <div class="package-list">
+    <% @watch_packages.each do |watch_package| %>
+      <% package_path = Rack::Utils.escape_path(watch_package.fetch("package_name")) %>
+      <% edit_form_id = "edit-watch-package-#{watch_package.fetch("id")}" %>
+      <article class="package-card">
+        <header>
+          <div>
             <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
               <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
             <% end %>
-            <input form="<%= edit_form_id %>" name="app_label" value="<%= watch_package.fetch("app_label") %>" required>
-          </td>
-          <td>
-            <input form="<%= edit_form_id %>" name="enabled" type="checkbox" value="1" <%= watch_package.fetch("enabled").to_i == 1 ? "checked" : "" %>>
-          </td>
-          <td><input form="<%= edit_form_id %>" name="cooldown_seconds" type="number" min="0" value="<%= watch_package.fetch("cooldown_seconds") %>"></td>
-          <td>
-            <button form="<%= edit_form_id %>" type="submit">Save</button>
-            <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>/delete" onsubmit="return confirm('Delete this watch package?')">
-              <button type="submit" class="secondary">Delete</button>
-            </form>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
+            <strong><%= watch_package.fetch("app_label") %></strong>
+            <div class="token muted"><%= watch_package.fetch("package_name") %></div>
+          </div>
+        </header>
+        <form id="<%= edit_form_id %>" method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>">
+          <label>
+            Label
+            <input name="app_label" value="<%= watch_package.fetch("app_label") %>" required>
+          </label>
+          <label>
+            Cooldown seconds
+            <input name="cooldown_seconds" type="number" min="0" value="<%= watch_package.fetch("cooldown_seconds") %>">
+          </label>
+          <label>
+            <input name="enabled" type="checkbox" value="1" <%= watch_package.fetch("enabled").to_i == 1 ? "checked" : "" %>>
+            Enabled
+          </label>
+        </form>
+        <div class="actions">
+          <button form="<%= edit_form_id %>" type="submit">Save</button>
+          <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>/delete" onsubmit="return confirm('Delete this watch package?')">
+            <button type="submit" class="secondary">Delete</button>
+          </form>
+        </div>
+      </article>
+    <% end %>
+  </div>
 
   <details>
     <summary role="button">Add package</summary>
