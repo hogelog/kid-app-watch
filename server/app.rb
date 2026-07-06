@@ -864,27 +864,30 @@ __END__
   <h2><%= @device.fetch("name") %></h2>
   <p class="muted">Device ID: <span class="token"><%= @device.fetch("id") %></span></p>
   <p class="muted">Last seen: <%= format_jst_datetime(@device.fetch("last_seen_at", nil)) %></p>
-  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/name">
-    <label>
-      Name
-      <input name="name" value="<%= @device.fetch("name") %>" required>
-    </label>
-    <button type="submit">Save name</button>
-  </form>
-  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
-    <button type="submit" class="secondary">Delete device</button>
-  </form>
-</section>
+  <% unless @device.fetch("ntfy_topic_url", "").to_s.empty? %>
+    <p class="muted">ntfy: <span class="token"><%= @device.fetch("ntfy_topic_url") %></span></p>
+  <% end %>
 
-<section>
-  <h2>ntfy topic</h2>
-  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/ntfy">
-    <label>
-      Topic URL
-      <input name="ntfy_topic_url" value="<%= @device.fetch("ntfy_topic_url") %>" placeholder="https://ntfy.sh/example-topic">
-    </label>
-    <button type="submit">Save</button>
-  </form>
+  <details>
+    <summary role="button" class="secondary">Edit device</summary>
+    <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/name">
+      <label>
+        Name
+        <input name="name" value="<%= @device.fetch("name") %>" required>
+      </label>
+      <button type="submit">Save name</button>
+    </form>
+    <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/ntfy">
+      <label>
+        ntfy topic URL
+        <input name="ntfy_topic_url" value="<%= @device.fetch("ntfy_topic_url") %>" placeholder="https://ntfy.sh/example-topic">
+      </label>
+      <button type="submit">Save ntfy</button>
+    </form>
+    <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/delete" onsubmit="return confirm('Delete this device and all events?')">
+      <button type="submit" class="secondary">Delete device</button>
+    </form>
+  </details>
 </section>
 
 <section>
