@@ -651,6 +651,12 @@ __END__
     .event-list > .event-date:first-child {
       margin-top: 0;
     }
+    .event-date-row {
+      color: color-mix(in srgb, CanvasText 70%, transparent);
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding-top: 1.25rem;
+    }
     .event-item {
       align-items: center;
       border-bottom: 1px solid var(--pico-muted-border-color);
@@ -819,7 +825,7 @@ __END__
         <% event_date = format_jst_date(event.fetch("detected_at")) %>
         <% if event_date != current_date %>
           <% current_date = event_date %>
-          <tr><th colspan="4"><%= event_date %></th></tr>
+          <tr><th class="event-date-row" colspan="4"><%= event_date %></th></tr>
         <% end %>
         <tr>
           <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
@@ -980,7 +986,7 @@ __END__
         <% event_date = format_jst_date(event.fetch("detected_at")) %>
         <% if event_date != current_date %>
           <% current_date = event_date %>
-          <tr><th colspan="4"><%= event_date %></th></tr>
+          <tr><th class="event-date-row" colspan="4"><%= event_date %></th></tr>
         <% end %>
         <tr>
           <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
