@@ -903,26 +903,29 @@ __END__
             <div class="token muted"><%= watch_package.fetch("package_name") %></div>
           </div>
         </header>
-        <form id="<%= edit_form_id %>" method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>">
-          <label>
-            Label
-            <input name="app_label" value="<%= watch_package.fetch("app_label") %>" required>
-          </label>
-          <label>
-            Cooldown seconds
-            <input name="cooldown_seconds" type="number" min="0" value="<%= watch_package.fetch("cooldown_seconds") %>">
-          </label>
-          <label>
-            <input name="enabled" type="checkbox" value="1" <%= watch_package.fetch("enabled").to_i == 1 ? "checked" : "" %>>
-            Enabled
-          </label>
-        </form>
-        <div class="actions">
-          <button form="<%= edit_form_id %>" type="submit">Save</button>
-          <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>/delete" onsubmit="return confirm('Delete this watch package?')">
-            <button type="submit" class="secondary">Delete</button>
+        <details>
+          <summary role="button" class="secondary">Edit</summary>
+          <form id="<%= edit_form_id %>" method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>">
+            <label>
+              Label
+              <input name="app_label" value="<%= watch_package.fetch("app_label") %>" required>
+            </label>
+            <label>
+              Cooldown seconds
+              <input name="cooldown_seconds" type="number" min="0" value="<%= watch_package.fetch("cooldown_seconds") %>">
+            </label>
+            <label>
+              <input name="enabled" type="checkbox" value="1" <%= watch_package.fetch("enabled").to_i == 1 ? "checked" : "" %>>
+              Enabled
+            </label>
           </form>
-        </div>
+          <div class="actions">
+            <button form="<%= edit_form_id %>" type="submit">Save</button>
+            <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>/delete" onsubmit="return confirm('Delete this watch package?')">
+              <button type="submit" class="secondary">Delete</button>
+            </form>
+          </div>
+        </details>
       </article>
     <% end %>
   </div>
