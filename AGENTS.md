@@ -8,12 +8,12 @@ This repository is public; keep code, comments, commits, issues, and PRs in Engl
 - The watch page is scoped to one logged-in device and should stay minimal.
 - Device login is done by opening `/?device_id=<device-id>`; the server stores it in a long-lived cookie.
 - Admin UI is for setup and maintenance only.
-- `/admin*` is protected by an external gateway such as Cloudflare Access, not by in-app Basic auth.
+- `/admin*` is expected to be protected by deployment infrastructure, not by in-app Basic auth.
 
 ## Authentication model
 
-- Do not reintroduce an internal API token.
-- Android API calls rely on external gateway headers, e.g. Cloudflare Access service-token headers.
+- Do not reintroduce an internal API token unless the application requirements change.
+- Android API calls may include deployment-specific gateway headers.
 - The Android settings screen stores extra headers as one multi-line text field.
 
 ## Android behavior
