@@ -814,7 +814,13 @@ __END__
       </tr>
     </thead>
     <tbody>
+      <% current_date = nil %>
       <% @events.each do |event| %>
+        <% event_date = format_jst_date(event.fetch("detected_at")) %>
+        <% if event_date != current_date %>
+          <% current_date = event_date %>
+          <tr><th colspan="4"><%= event_date %></th></tr>
+        <% end %>
         <tr>
           <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
           <td>
@@ -969,7 +975,13 @@ __END__
       </tr>
     </thead>
     <tbody>
+      <% current_date = nil %>
       <% @events.each do |event| %>
+        <% event_date = format_jst_date(event.fetch("detected_at")) %>
+        <% if event_date != current_date %>
+          <% current_date = event_date %>
+          <tr><th colspan="4"><%= event_date %></th></tr>
+        <% end %>
         <tr>
           <td><%= format_jst_datetime(event.fetch("detected_at")) %></td>
           <td class="token"><%= event.fetch("package_name") %></td>
