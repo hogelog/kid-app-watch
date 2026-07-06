@@ -359,6 +359,50 @@ module KidAppWatch
       redirect_back_to_device(device.fetch("id"))
     end
 
+    post "/admin/devices/:id/watch_packages/:package_name" do
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
+      halt 404, "Device not found" unless device
+
+      watch_package = db.get_first_row(<<~SQL, [device.fetch("id"), params[:package_name]])
+        SELECT *
+        FROM watch_packages
+        WHERE device_id = ? AND package_name = ?
+      SQL
+      halt 404, "Package not found" unless watch_package
+
+      app_label = params.fetch("app_label", "").strip
+      cooldown_seconds = Integer(params.fetch("cooldown_seconds", "300"))
+      app_label = watch_package.fetch("package_name") if app_label.empty?
+      icon_url = watch_package.fetch("icon_url", "")
+      if icon_url.to_s.empty?
+        metadata = fetch_play_store_metadata(watch_package.fetch("package_name"))
+        icon_url = metadata.fetch(:icon_url, "")
+      end
+
+      db.execute(<<~SQL, [app_label, icon_url, bool_param("enabled"), cooldown_seconds, now_iso, device.fetch("id"), watch_package.fetch("package_name")])
+        UPDATE watch_packages
+        SET app_label = ?,
+            icon_url = ?,
+            enabled = ?,
+            cooldown_seconds = ?,
+            updated_at = ?
+        WHERE device_id = ? AND package_name = ?
+      SQL
+
+      redirect_back_to_device(device.fetch("id"))
+    end
+
+    post "/admin/devices/:id/watch_packages/:package_name/delete" do
+      device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
+      halt 404, "Device not found" unless device
+
+      db.execute(
+        "DELETE FROM watch_packages WHERE device_id = ? AND package_name = ?",
+        [device.fetch("id"), params[:package_name]],
+      )
+      redirect_back_to_device(device.fetch("id"))
+    end
+
     post "/admin/devices/:id/name" do
       device = db.get_first_row("SELECT * FROM devices WHERE id = ?", [params[:id]])
       halt 404, "Device not found" unless device
@@ -832,44 +876,59 @@ __END__
         <th>Label</th>
         <th>Enabled</th>
         <th>Cooldown</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       <% @watch_packages.each do |watch_package| %>
+        <% package_path = Rack::Utils.escape_path(watch_package.fetch("package_name")) %>
+        <% edit_form_id = "edit-watch-package-#{watch_package.fetch("id")}" %>
         <tr>
           <td class="token"><%= watch_package.fetch("package_name") %></td>
           <td>
+            <form id="<%= edit_form_id %>" method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>"></form>
             <% unless watch_package.fetch("icon_url", "").to_s.empty? %>
               <img class="app-icon" src="<%= watch_package.fetch("icon_url") %>" alt="">
             <% end %>
-            <%= watch_package.fetch("app_label") %>
+            <input form="<%= edit_form_id %>" name="app_label" value="<%= watch_package.fetch("app_label") %>" required>
           </td>
-          <td><%= watch_package.fetch("enabled").to_i == 1 ? "yes" : "no" %></td>
-          <td><%= watch_package.fetch("cooldown_seconds") %>s</td>
+          <td>
+            <input form="<%= edit_form_id %>" name="enabled" type="checkbox" value="1" <%= watch_package.fetch("enabled").to_i == 1 ? "checked" : "" %>>
+          </td>
+          <td><input form="<%= edit_form_id %>" name="cooldown_seconds" type="number" min="0" value="<%= watch_package.fetch("cooldown_seconds") %>"></td>
+          <td>
+            <button form="<%= edit_form_id %>" type="submit">Save</button>
+            <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages/<%= package_path %>/delete" onsubmit="return confirm('Delete this watch package?')">
+              <button type="submit" class="secondary">Delete</button>
+            </form>
+          </td>
         </tr>
       <% end %>
     </tbody>
   </table>
 
-  <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages">
-    <label>
-      Package name
-      <input name="package_name" placeholder="com.google.android.youtube" required>
-    </label>
-    <label>
-      App label
-      <input name="app_label" placeholder="YouTube">
-    </label>
-    <label>
-      Cooldown seconds
-      <input name="cooldown_seconds" type="number" min="0" value="300">
-    </label>
-    <label>
-      Enabled
-      <input name="enabled" type="checkbox" value="1" checked>
-    </label>
-    <button type="submit">Save package</button>
-  </form>
+  <details>
+    <summary role="button">Add package</summary>
+    <form method="post" action="/admin/devices/<%= Rack::Utils.escape_path(@device.fetch("id")) %>/watch_packages">
+      <label>
+        Package name
+        <input name="package_name" placeholder="com.google.android.youtube" required>
+      </label>
+      <label>
+        App label
+        <input name="app_label" placeholder="YouTube">
+      </label>
+      <label>
+        Cooldown seconds
+        <input name="cooldown_seconds" type="number" min="0" value="300">
+      </label>
+      <label>
+        Enabled
+        <input name="enabled" type="checkbox" value="1" checked>
+      </label>
+      <button type="submit">Add package</button>
+    </form>
+  </details>
 </section>
 
 <section>
